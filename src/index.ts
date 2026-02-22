@@ -3,6 +3,7 @@ import path from 'path';
 
 import {
   ASSISTANT_NAME,
+  EMAIL_CHANNEL,
   IDLE_TIMEOUT,
   MAIN_GROUP_FOLDER,
   POLL_INTERVAL,
@@ -25,6 +26,8 @@ import {
   getNewMessages,
   getRouterState,
   initDatabase,
+  markEmailProcessed,
+  markEmailResponded,
   setRegisteredGroup,
   setRouterState,
   setSession,
@@ -37,6 +40,12 @@ import { startIpcWatcher } from './ipc.js';
 import { findChannel, formatMessages, formatOutbound } from './router.js';
 import { startSchedulerLoop } from './task-scheduler.js';
 import { Channel, NewMessage, RegisteredGroup } from './types.js';
+import {
+  checkForNewEmails,
+  ensureEmailGroupFolder,
+  formatEmailPrompt,
+  getEmailContextFolder,
+} from './email-poller.js';
 import { logger } from './logger.js';
 
 // Re-export for backwards compatibility during refactor
@@ -414,6 +423,60 @@ function recoverPendingMessages(): void {
   }
 }
 
+async function startEmailLoop(): Promise<void> {
+  if (!EMAIL_CHANNEL.enabled) {
+    logger.info('Email channel disabled');
+    return;
+  }
+
+  logger.info(
+    { sender: EMAIL_CHANNEL.triggerSender, pollInterval: EMAIL_CHANNEL.pollIntervalMs },
+    'Email channel running',
+  );
+
+  while (true) {
+    try {
+      const emails = await checkForNewEmails();
+
+      for (const email of emails) {
+        logger.info({ from: email.from, subject: email.subject }, 'Processing email');
+        markEmailProcessed(email.id, email.threadId, email.from, email.subject);
+
+        const folder = getEmailContextFolder(email);
+        ensureEmailGroupFolder(folder);
+
+        const prompt = formatEmailPrompt(email);
+
+        // Create an ephemeral registered group for the email context
+        const emailGroup: RegisteredGroup = {
+          name: `email-${email.threadId.slice(0, 8)}`,
+          folder,
+          trigger: '',
+          added_at: new Date().toISOString(),
+          requiresTrigger: false,
+        };
+
+        const result = await runAgent(emailGroup, prompt, `email:${email.from}`, async (output) => {
+          if (output.result) {
+            logger.info({ to: email.from, subject: email.subject }, 'Email agent produced output');
+          }
+        });
+
+        if (result === 'success') {
+          markEmailResponded(email.id);
+          logger.info({ to: email.from }, 'Email processed successfully');
+        } else {
+          logger.warn({ from: email.from, subject: email.subject }, 'Email agent failed');
+        }
+      }
+    } catch (err) {
+      logger.error({ err }, 'Error in email loop');
+    }
+
+    await new Promise((resolve) => setTimeout(resolve, EMAIL_CHANNEL.pollIntervalMs));
+  }
+}
+
 function ensureContainerSystemRunning(): void {
   ensureContainerRuntimeRunning();
   cleanupOrphans();
@@ -481,6 +544,9 @@ async function main(): Promise<void> {
   startMessageLoop().catch((err) => {
     logger.fatal({ err }, 'Message loop crashed unexpectedly');
     process.exit(1);
+  });
+  startEmailLoop().catch((err) => {
+    logger.error({ err }, 'Email loop crashed, continuing without email');
   });
 }
 

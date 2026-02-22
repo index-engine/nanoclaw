@@ -2,7 +2,7 @@
  * Step: groups — Connect to WhatsApp, fetch group metadata, write to DB.
  * Replaces 05-sync-groups.sh + 05b-list-groups.sh
  */
-import { execSync } from 'child_process';
+import { execFileSync } from 'child_process';
 import fs from 'fs';
 import path from 'path';
 
@@ -61,9 +61,10 @@ async function syncGroups(projectRoot: string): Promise<void> {
   logger.info('Building TypeScript');
   let buildOk = false;
   try {
-    execSync('npm run build', {
+    execFileSync('npm', ['run', 'build'], {
       cwd: projectRoot,
       stdio: ['ignore', 'pipe', 'pipe'],
+      shell: true,
     });
     buildOk = true;
     logger.info('Build succeeded');
@@ -153,7 +154,7 @@ sock.ev.on('connection.update', async (update) => {
 });
 `;
 
-    const output = execSync(`node --input-type=module -e ${JSON.stringify(syncScript)}`, {
+    const output = execFileSync('node', ['--input-type=module', '-e', syncScript], {
       cwd: projectRoot,
       encoding: 'utf-8',
       timeout: 45000,
@@ -161,8 +162,16 @@ sock.ev.on('connection.update', async (update) => {
     });
     syncOk = output.includes('SYNCED:');
     logger.info({ output: output.trim() }, 'Sync output');
-  } catch (err) {
-    logger.error({ err }, 'Sync failed');
+  } catch (err: any) {
+    // The inline script may exit with code 1 from CONNECTION_CLOSED after a successful sync.
+    // Check stdout for SYNCED: to determine if the sync actually succeeded.
+    const stdout = err?.stdout ?? '';
+    if (stdout.includes('SYNCED:')) {
+      syncOk = true;
+      logger.info({ output: stdout.trim() }, 'Sync output (connection closed after sync)');
+    } else {
+      logger.error({ err }, 'Sync failed');
+    }
   }
 
   // Count groups in DB using better-sqlite3 (no sqlite3 CLI)

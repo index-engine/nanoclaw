@@ -67,3 +67,18 @@ export const TRIGGER_PATTERN = new RegExp(
 // Uses system timezone by default
 export const TIMEZONE =
   process.env.TZ || Intl.DateTimeFormat().resolvedOptions().timeZone;
+
+// Email channel configuration
+export const EMAIL_CHANNEL: {
+  enabled: boolean;
+  triggerSender: string;
+  contextMode: 'thread' | 'sender' | 'single';
+  pollIntervalMs: number;
+  replyPrefix: string;
+} = {
+  enabled: true,
+  triggerSender: 'vitaly.meursault@gmail.com',
+  contextMode: 'thread',
+  pollIntervalMs: 60000,
+  replyPrefix: '',
+};
