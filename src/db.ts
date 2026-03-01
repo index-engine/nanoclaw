@@ -621,19 +621,30 @@ export function getAllRegisteredGroups(): Record<string, RegisteredGroup> {
 // --- Email tracking ---
 
 export function isEmailProcessed(messageId: string): boolean {
-  const row = db.prepare('SELECT 1 FROM processed_emails WHERE message_id = ?').get(messageId);
+  const row = db
+    .prepare('SELECT 1 FROM processed_emails WHERE message_id = ?')
+    .get(messageId);
   return !!row;
 }
 
-export function markEmailProcessed(messageId: string, threadId: string, sender: string, subject: string): void {
-  db.prepare(`
+export function markEmailProcessed(
+  messageId: string,
+  threadId: string,
+  sender: string,
+  subject: string,
+): void {
+  db.prepare(
+    `
     INSERT OR REPLACE INTO processed_emails (message_id, thread_id, sender, subject, processed_at)
     VALUES (?, ?, ?, ?, ?)
-  `).run(messageId, threadId, sender, subject, new Date().toISOString());
+  `,
+  ).run(messageId, threadId, sender, subject, new Date().toISOString());
 }
 
 export function markEmailResponded(messageId: string): void {
-  db.prepare('UPDATE processed_emails SET response_sent = 1 WHERE message_id = ?').run(messageId);
+  db.prepare(
+    'UPDATE processed_emails SET response_sent = 1 WHERE message_id = ?',
+  ).run(messageId);
 }
 
 // --- JSON migration ---

@@ -163,7 +163,10 @@ export async function syncThingsToExocortex(
         const url = `things:///update?id=${uuid}&auth-token=${thingsAuthToken}&heading-id=${projectConfig.ingestedHeadingUuid}`;
         exec(`open ${JSON.stringify(url)}`, (err) => {
           if (err) {
-            logger.error({ err, uuid }, 'Failed to move Things item to Ingested');
+            logger.error(
+              { err, uuid },
+              'Failed to move Things item to Ingested',
+            );
           } else {
             logger.info({ uuid }, 'Things: moved item to Ingested heading');
           }
@@ -193,10 +196,7 @@ export function startThingsSync(
   thingsAuthToken: string,
   intervalMs: number,
 ): void {
-  logger.info(
-    { intervalMs, exocortexPath },
-    'Starting Things sync loop',
-  );
+  logger.info({ intervalMs, exocortexPath }, 'Starting Things sync loop');
 
   // Run immediately, then on interval
   const run = () => {

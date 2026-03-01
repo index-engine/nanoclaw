@@ -387,10 +387,7 @@ export async function processTaskIpc(
     case 'open_url':
       // Only main group can open URLs on the host
       if (!isMain) {
-        logger.warn(
-          { sourceGroup },
-          'Unauthorized open_url attempt blocked',
-        );
+        logger.warn({ sourceGroup }, 'Unauthorized open_url attempt blocked');
         break;
       }
       if (data.url) {
