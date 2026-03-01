@@ -39,8 +39,19 @@ Run commands directly—don't tell the user to run them.
 ```bash
 npm run dev          # Run with hot reload
 npm run build        # Compile TypeScript
+npm test             # Run tests (vitest)
 ./container/build.sh # Rebuild agent container
 ```
+
+### Session History
+
+When committing, also append a session entry to `HISTORY.md` with a timestamp range and a narrative summary of the session: what problems we solved, what we built, what decisions we made. Focus on the "why" and the journey, not just a changelog.
+
+### Testing
+
+When changing agent behavior — how messages are routed, how notes are ingested, how files are written — verify end-to-end by running the actual pipeline: trigger the sync or inject a message, then check that the expected side effects happened (correct file, correct location within the file, correct content). Don't just update instructions and call it done; prove it works.
+
+Run `npm test` and ensure all tests pass before considering work complete.
 
 Service management:
 ```bash
@@ -54,6 +65,19 @@ systemctl --user start nanoclaw
 systemctl --user stop nanoclaw
 systemctl --user restart nanoclaw
 ```
+
+## Exocortex
+
+Personal knowledge base at `~/Documents/ai_assistant` (separate repo: `index-engine/ai_assistant`). See `exocortex/README.md` for details.
+
+- `projects/nanoclaw/` — architecture discussions, decisions, TODOs
+- `ingest/` — Things 3 sync pipeline (inbox, config, sync state)
+- `archive/` — legacy strategic assistant files (read-only reference)
+- `jobs.md` — registry of all scheduled jobs; any new job MUST be added there
+
+Two NanoClaw processes write to the exocortex (see `src/index.ts`):
+- **Things sync** (`src/things-sync.ts`) — reads Things 3 DB, writes new items to `ingest/things_inbox.json` every hour
+- **Exocortex git sync** (`src/exocortex-sync.ts`) — commits and pushes changes daily
 
 ## Container Build Cache
 

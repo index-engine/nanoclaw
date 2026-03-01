@@ -1,3 +1,4 @@
+import { exec } from 'child_process';
 import fs from 'fs';
 import path from 'path';
 
@@ -170,6 +171,8 @@ export async function processTaskIpc(
     trigger?: string;
     requiresTrigger?: boolean;
     containerConfig?: RegisteredGroup['containerConfig'];
+    // For open_url
+    url?: string;
   },
   sourceGroup: string, // Verified identity from IPC directory
   isMain: boolean, // Verified from directory path
@@ -378,6 +381,34 @@ export async function processTaskIpc(
           { data },
           'Invalid register_group request - missing required fields',
         );
+      }
+      break;
+
+    case 'open_url':
+      // Only main group can open URLs on the host
+      if (!isMain) {
+        logger.warn(
+          { sourceGroup },
+          'Unauthorized open_url attempt blocked',
+        );
+        break;
+      }
+      if (data.url) {
+        const allowedSchemes = ['things://', 'obsidian://'];
+        if (allowedSchemes.some((s) => data.url!.startsWith(s))) {
+          exec(`open ${JSON.stringify(data.url)}`, (err) => {
+            if (err) {
+              logger.error({ err, url: data.url }, 'Failed to open URL');
+            } else {
+              logger.info({ url: data.url }, 'Opened URL via IPC');
+            }
+          });
+        } else {
+          logger.warn(
+            { url: data.url },
+            'open_url blocked: scheme not in allowlist',
+          );
+        }
       }
       break;
 

@@ -6,13 +6,21 @@ import { readEnvFile } from './env.js';
 // Read config values from .env (falls back to process.env).
 // Secrets are NOT read here — they stay on disk and are loaded only
 // where needed (container-runner.ts) to avoid leaking to child processes.
-const envConfig = readEnvFile(['ASSISTANT_NAME', 'ASSISTANT_HAS_OWN_NUMBER']);
+const envConfig = readEnvFile([
+  'ASSISTANT_NAME',
+  'ASSISTANT_HAS_OWN_NUMBER',
+  'TELEGRAM_BOT_TOKEN',
+  'TELEGRAM_ONLY',
+  'THINGS_AUTH_TOKEN',
+  'THINGS_SYNC_INTERVAL',
+  'THINGS_DB_PATH',
+  'EXOCORTEX_PATH',
+]);
 
 export const ASSISTANT_NAME =
   process.env.ASSISTANT_NAME || envConfig.ASSISTANT_NAME || 'Andy';
 export const ASSISTANT_HAS_OWN_NUMBER =
-  (process.env.ASSISTANT_HAS_OWN_NUMBER ||
-    envConfig.ASSISTANT_HAS_OWN_NUMBER) === 'true';
+  (process.env.ASSISTANT_HAS_OWN_NUMBER || envConfig.ASSISTANT_HAS_OWN_NUMBER) === 'true';
 export const POLL_INTERVAL = 2000;
 export const SCHEDULER_POLL_INTERVAL = 60000;
 
@@ -43,7 +51,10 @@ export const CONTAINER_MAX_OUTPUT_SIZE = parseInt(
   10,
 ); // 10MB default
 export const IPC_POLL_INTERVAL = 1000;
-export const IDLE_TIMEOUT = parseInt(process.env.IDLE_TIMEOUT || '1800000', 10); // 30min default — how long to keep container alive after last result
+export const IDLE_TIMEOUT = parseInt(
+  process.env.IDLE_TIMEOUT || '1800000',
+  10,
+); // 30min default — how long to keep container alive after last result
 export const MAX_CONCURRENT_CONTAINERS = Math.max(
   1,
   parseInt(process.env.MAX_CONCURRENT_CONTAINERS || '5', 10) || 5,
@@ -63,17 +74,22 @@ export const TRIGGER_PATTERN = new RegExp(
 export const TIMEZONE =
   process.env.TZ || Intl.DateTimeFormat().resolvedOptions().timeZone;
 
-// Email channel configuration
-export const EMAIL_CHANNEL: {
-  enabled: boolean;
-  triggerSender: string;
-  contextMode: 'thread' | 'sender' | 'single';
-  pollIntervalMs: number;
-  replyPrefix: string;
-} = {
-  enabled: true,
-  triggerSender: 'vitaly.meursault@gmail.com',
-  contextMode: 'thread',
-  pollIntervalMs: 60000,
-  replyPrefix: '',
-};
+// Telegram configuration
+export const TELEGRAM_BOT_TOKEN =
+  process.env.TELEGRAM_BOT_TOKEN || envConfig.TELEGRAM_BOT_TOKEN || '';
+export const TELEGRAM_ONLY =
+  (process.env.TELEGRAM_ONLY || envConfig.TELEGRAM_ONLY) === 'true';
+
+// Things + Exocortex configuration
+export const THINGS_AUTH_TOKEN =
+  process.env.THINGS_AUTH_TOKEN || envConfig.THINGS_AUTH_TOKEN || '';
+export const THINGS_SYNC_INTERVAL = parseInt(
+  process.env.THINGS_SYNC_INTERVAL || envConfig.THINGS_SYNC_INTERVAL || '3600000',
+  10,
+);
+export const THINGS_DB_PATH =
+  process.env.THINGS_DB_PATH ||
+  envConfig.THINGS_DB_PATH ||
+  '~/Library/Group Containers/JLMPQHK86H.com.culturedcode.ThingsMac/ThingsData-YN4YZ/Things Database.thingsdatabase/main.sqlite';
+export const EXOCORTEX_PATH =
+  process.env.EXOCORTEX_PATH || envConfig.EXOCORTEX_PATH || '';
