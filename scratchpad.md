@@ -1,0 +1,2 @@
+- Test adding stuff to telegram
+- Next I need to ask CC to work through things

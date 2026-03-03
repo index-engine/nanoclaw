@@ -11,7 +11,11 @@ import { google } from 'googleapis';
 
 import { EMAIL_CHANNEL } from './config.js';
 import { resolveGroupFolderPath } from './group-folder.js';
-import { isEmailProcessed, markEmailProcessed, markEmailResponded } from './db.js';
+import {
+  isEmailProcessed,
+  markEmailProcessed,
+  markEmailResponded,
+} from './db.js';
 import { logger } from './logger.js';
 
 export interface EmailMessage {
@@ -23,7 +27,10 @@ export interface EmailMessage {
   date: string;
 }
 
-const GMAIL_CONFIG_DIR = path.join(process.env.HOME || os.homedir(), '.gmail-mcp');
+const GMAIL_CONFIG_DIR = path.join(
+  process.env.HOME || os.homedir(),
+  '.gmail-mcp',
+);
 const OAUTH_KEYS_PATH = path.join(GMAIL_CONFIG_DIR, 'gcp-oauth.keys.json');
 const CREDENTIALS_PATH = path.join(GMAIL_CONFIG_DIR, 'credentials.json');
 
@@ -37,9 +44,15 @@ function getGmailClient() {
 
   const clientId = keys.installed?.client_id || keys.web?.client_id;
   const clientSecret = keys.installed?.client_secret || keys.web?.client_secret;
-  const redirectUri = (keys.installed?.redirect_uris || keys.web?.redirect_uris)?.[0] || 'http://localhost';
+  const redirectUri =
+    (keys.installed?.redirect_uris || keys.web?.redirect_uris)?.[0] ||
+    'http://localhost';
 
-  const oauth2Client = new google.auth.OAuth2(clientId, clientSecret, redirectUri);
+  const oauth2Client = new google.auth.OAuth2(
+    clientId,
+    clientSecret,
+    redirectUri,
+  );
   oauth2Client.setCredentials({
     access_token: credentials.access_token,
     refresh_token: credentials.refresh_token,
@@ -59,7 +72,10 @@ function getGmailClient() {
 }
 
 function decodeBase64Url(data: string): string {
-  return Buffer.from(data.replace(/-/g, '+').replace(/_/g, '/'), 'base64').toString('utf-8');
+  return Buffer.from(
+    data.replace(/-/g, '+').replace(/_/g, '/'),
+    'base64',
+  ).toString('utf-8');
 }
 
 function extractBody(payload: any): string {
@@ -70,7 +86,9 @@ function extractBody(payload: any): string {
 
   // Multipart: look for text/plain first, then text/html
   if (payload.parts) {
-    const textPart = payload.parts.find((p: any) => p.mimeType === 'text/plain');
+    const textPart = payload.parts.find(
+      (p: any) => p.mimeType === 'text/plain',
+    );
     if (textPart?.body?.data) {
       return decodeBase64Url(textPart.body.data);
     }
@@ -123,9 +141,12 @@ export async function checkForNewEmails(): Promise<EmailMessage[]> {
     });
 
     const headers = full.data.payload?.headers || [];
-    const from = headers.find((h) => h.name?.toLowerCase() === 'from')?.value || '';
-    const subject = headers.find((h) => h.name?.toLowerCase() === 'subject')?.value || '';
-    const date = headers.find((h) => h.name?.toLowerCase() === 'date')?.value || '';
+    const from =
+      headers.find((h) => h.name?.toLowerCase() === 'from')?.value || '';
+    const subject =
+      headers.find((h) => h.name?.toLowerCase() === 'subject')?.value || '';
+    const date =
+      headers.find((h) => h.name?.toLowerCase() === 'date')?.value || '';
     const body = extractBody(full.data.payload);
 
     emails.push({
@@ -195,7 +216,9 @@ export function ensureEmailGroupFolder(folder: string): void {
 
   const claudeMdPath = path.join(groupDir, 'CLAUDE.md');
   if (!fs.existsSync(claudeMdPath)) {
-    fs.writeFileSync(claudeMdPath, `# Email Channel
+    fs.writeFileSync(
+      claudeMdPath,
+      `# Email Channel
 
 You are responding to emails. Your responses will be sent as email replies via Gmail MCP.
 
@@ -209,6 +232,7 @@ You are responding to emails. Your responses will be sent as email replies via G
 ## Context
 
 Each email thread has its own conversation history.
-`);
+`,
+    );
   }
 }
