@@ -1,2 +1,3 @@
-- Test adding stuff to telegram
-- Next I need to ask CC to work through things
+- ~~Test adding stuff to telegram~~ done
+- ~~Next I need to ask CC to work through things~~ done
+- Disable Telegram bot privacy mode via BotFather (so capture group receives all messages without @mention)
