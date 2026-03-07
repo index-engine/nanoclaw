@@ -143,9 +143,27 @@ describe('syncThingsToExocortex', () => {
 
     // Inbox has 3 items
     writeJson(inboxPath, [
-      { uuid: 'item-1', title: 'First', notes: null, project_title: 'NanoClaw', creationDate: '2024-03-02T00:00:00.000Z' },
-      { uuid: 'item-2', title: 'Second', notes: null, project_title: 'NanoClaw', creationDate: '2024-03-02T00:00:00.000Z' },
-      { uuid: 'item-3', title: 'Third', notes: null, project_title: 'NanoClaw', creationDate: '2024-03-02T00:00:00.000Z' },
+      {
+        uuid: 'item-1',
+        title: 'First',
+        notes: null,
+        project_title: 'NanoClaw',
+        creationDate: '2024-03-02T00:00:00.000Z',
+      },
+      {
+        uuid: 'item-2',
+        title: 'Second',
+        notes: null,
+        project_title: 'NanoClaw',
+        creationDate: '2024-03-02T00:00:00.000Z',
+      },
+      {
+        uuid: 'item-3',
+        title: 'Third',
+        notes: null,
+        project_title: 'NanoClaw',
+        creationDate: '2024-03-02T00:00:00.000Z',
+      },
     ]);
 
     // Agent has marked all 3 as ingested
@@ -185,9 +203,27 @@ describe('syncThingsToExocortex', () => {
 
     // Inbox has 3 items
     writeJson(inboxPath, [
-      { uuid: 'item-1', title: 'First', notes: null, project_title: 'NanoClaw', creationDate: '2024-03-02T00:00:00.000Z' },
-      { uuid: 'item-2', title: 'Second', notes: null, project_title: 'NanoClaw', creationDate: '2024-03-02T00:00:00.000Z' },
-      { uuid: 'item-3', title: 'Third', notes: null, project_title: 'NanoClaw', creationDate: '2024-03-02T00:00:00.000Z' },
+      {
+        uuid: 'item-1',
+        title: 'First',
+        notes: null,
+        project_title: 'NanoClaw',
+        creationDate: '2024-03-02T00:00:00.000Z',
+      },
+      {
+        uuid: 'item-2',
+        title: 'Second',
+        notes: null,
+        project_title: 'NanoClaw',
+        creationDate: '2024-03-02T00:00:00.000Z',
+      },
+      {
+        uuid: 'item-3',
+        title: 'Third',
+        notes: null,
+        project_title: 'NanoClaw',
+        creationDate: '2024-03-02T00:00:00.000Z',
+      },
     ]);
 
     // Agent only ingested item-1 and item-2

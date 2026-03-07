@@ -547,7 +547,11 @@ async function main(): Promise<void> {
   }
   // Obsidian vault sync (render exocortex → vault)
   if (EXOCORTEX_PATH && OBSIDIAN_VAULT_PATH) {
-    startObsidianSync(EXOCORTEX_PATH, OBSIDIAN_VAULT_PATH, OBSIDIAN_SYNC_INTERVAL);
+    startObsidianSync(
+      EXOCORTEX_PATH,
+      OBSIDIAN_VAULT_PATH,
+      OBSIDIAN_SYNC_INTERVAL,
+    );
   }
   queue.setProcessMessagesFn(processGroupMessages);
   recoverPendingMessages();

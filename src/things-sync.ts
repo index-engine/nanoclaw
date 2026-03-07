@@ -149,7 +149,10 @@ export async function syncThingsToExocortex(
           .prepare('SELECT project FROM TMTask WHERE uuid = ?')
           .get(uuid) as { project: string } | undefined;
         if (!itemProjectRow) {
-          logger.warn({ uuid }, 'Things: ingested item not found in DB, skipping');
+          logger.warn(
+            { uuid },
+            'Things: ingested item not found in DB, skipping',
+          );
           continue;
         }
 
@@ -157,7 +160,10 @@ export async function syncThingsToExocortex(
           (p) => p.uuid === itemProjectRow.project,
         );
         if (!projectConfig) {
-          logger.warn({ uuid, project: itemProjectRow.project }, 'Things: no config for item project, skipping');
+          logger.warn(
+            { uuid, project: itemProjectRow.project },
+            'Things: no config for item project, skipping',
+          );
           continue;
         }
 

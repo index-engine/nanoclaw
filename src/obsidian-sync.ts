@@ -27,9 +27,9 @@ function resolvePath(p: string): string {
 // --- Vault layout ---
 
 interface VaultLayout {
-  fleeting: string;   // "3. Resources/Exocortex/Fleeting"
-  notes: string;      // "3. Resources/Exocortex/Notes"
-  plans: string;      // "3. Resources/Exocortex/Plans"
+  fleeting: string; // "3. Resources/Exocortex/Fleeting"
+  notes: string; // "3. Resources/Exocortex/Notes"
+  plans: string; // "3. Resources/Exocortex/Plans"
   dailyNotes: string; // "0a. Daily Notes"
 }
 
@@ -90,7 +90,11 @@ export function parseFrontmatter(content: string): {
     let value: unknown = rawValue.trim();
 
     // Parse arrays: [tag1, tag2]
-    if (typeof value === 'string' && value.startsWith('[') && value.endsWith(']')) {
+    if (
+      typeof value === 'string' &&
+      value.startsWith('[') &&
+      value.endsWith(']')
+    ) {
       value = value
         .slice(1, -1)
         .split(',')
@@ -98,7 +102,11 @@ export function parseFrontmatter(content: string): {
         .filter(Boolean);
     }
     // Unquote strings
-    if (typeof value === 'string' && value.startsWith('"') && value.endsWith('"')) {
+    if (
+      typeof value === 'string' &&
+      value.startsWith('"') &&
+      value.endsWith('"')
+    ) {
       value = value.slice(1, -1);
     }
 
@@ -123,7 +131,11 @@ export function serializeFrontmatter(
     } else {
       const strVal = String(value);
       // Quote strings that contain special YAML characters
-      if (strVal.includes(':') || strVal.includes('#') || strVal.includes("'")) {
+      if (
+        strVal.includes(':') ||
+        strVal.includes('#') ||
+        strVal.includes("'")
+      ) {
         lines.push(`${key}: "${strVal}"`);
       } else {
         lines.push(`${key}: ${strVal}`);
@@ -150,7 +162,11 @@ export function readNoteFiles(dir: string): NoteFile[] {
     const content = fs.readFileSync(path.join(dir, filename), 'utf-8');
     const parsed = parseFrontmatter(content);
     if (parsed) {
-      notes.push({ frontmatter: parsed.frontmatter, body: parsed.body, filename });
+      notes.push({
+        frontmatter: parsed.frontmatter,
+        body: parsed.body,
+        filename,
+      });
     }
   }
   return notes;
@@ -332,11 +348,26 @@ const EXOCORTEX_END = '<!-- exocortex-end -->';
 function findDailyNoteFile(vault: string, date: string): string | null {
   const [year, monthNum] = date.split('-');
   const monthNames = [
-    'January', 'February', 'March', 'April', 'May', 'June',
-    'July', 'August', 'September', 'October', 'November', 'December',
+    'January',
+    'February',
+    'March',
+    'April',
+    'May',
+    'June',
+    'July',
+    'August',
+    'September',
+    'October',
+    'November',
+    'December',
   ];
   const monthName = monthNames[parseInt(monthNum, 10) - 1];
-  const monthDir = path.join(vault, VAULT_LAYOUT.dailyNotes, year, `${monthNum}-${monthName}`);
+  const monthDir = path.join(
+    vault,
+    VAULT_LAYOUT.dailyNotes,
+    year,
+    `${monthNum}-${monthName}`,
+  );
 
   if (!fs.existsSync(monthDir)) return null;
 
@@ -353,11 +384,7 @@ function buildExocortexSection(
   fleeting: NoteFile[],
   permanent: NoteFile[],
 ): string {
-  const lines: string[] = [
-    EXOCORTEX_START,
-    '## Exocortex',
-    '',
-  ];
+  const lines: string[] = [EXOCORTEX_START, '## Exocortex', ''];
 
   // Captured
   if (fleeting.length > 0) {
@@ -365,7 +392,9 @@ function buildExocortexSection(
     for (const note of fleeting) {
       const status = note.frontmatter.status || 'active';
       const project = note.frontmatter.project || 'general';
-      const source = note.frontmatter.source ? `, ${note.frontmatter.source}` : '';
+      const source = note.frontmatter.source
+        ? `, ${note.frontmatter.source}`
+        : '';
       lines.push(
         `- [[${stripMd(note.filename)}]] (${status}, ${project}${source})`,
       );
@@ -375,7 +404,9 @@ function buildExocortexSection(
 
   // Triaged (incorporated/retired)
   const triaged = fleeting.filter(
-    (n) => n.frontmatter.status === 'incorporated' || n.frontmatter.status === 'retired',
+    (n) =>
+      n.frontmatter.status === 'incorporated' ||
+      n.frontmatter.status === 'retired',
   );
   if (triaged.length > 0) {
     lines.push('### Triaged', '');
@@ -383,9 +414,7 @@ function buildExocortexSection(
       const incorporatedInto = note.frontmatter.incorporated_into;
       if (incorporatedInto && Array.isArray(incorporatedInto)) {
         for (const target of incorporatedInto) {
-          lines.push(
-            `- [[${stripMd(note.filename)}]] → ${target}`,
-          );
+          lines.push(`- [[${stripMd(note.filename)}]] → ${target}`);
         }
       } else if (note.frontmatter.status === 'retired') {
         const reason = note.frontmatter.retired_reason || '';
@@ -407,12 +436,19 @@ function buildExocortexSection(
   }
 
   // Project Activity
-  const projectCounts = new Map<string, { captured: number; triaged: number }>();
+  const projectCounts = new Map<
+    string,
+    { captured: number; triaged: number }
+  >();
   for (const note of fleeting) {
     const project = note.frontmatter.project || 'general';
-    if (!projectCounts.has(project)) projectCounts.set(project, { captured: 0, triaged: 0 });
+    if (!projectCounts.has(project))
+      projectCounts.set(project, { captured: 0, triaged: 0 });
     projectCounts.get(project)!.captured++;
-    if (note.frontmatter.status === 'incorporated' || note.frontmatter.status === 'retired') {
+    if (
+      note.frontmatter.status === 'incorporated' ||
+      note.frontmatter.status === 'retired'
+    ) {
       projectCounts.get(project)!.triaged++;
     }
   }
@@ -465,7 +501,10 @@ export function generateDailyNotes(
   }
 
   // Collect all dates
-  const allDates = new Set([...fleetingByDate.keys(), ...permanentByDate.keys()]);
+  const allDates = new Set([
+    ...fleetingByDate.keys(),
+    ...permanentByDate.keys(),
+  ]);
 
   for (const date of allDates) {
     const fleeting = fleetingByDate.get(date) || [];
@@ -563,10 +602,12 @@ export function generateDashboard(
     n.filename.startsWith(today),
   );
   const todayTriaged = todayCaptures.filter(
-    (n) => n.frontmatter.status === 'incorporated' || n.frontmatter.status === 'retired',
+    (n) =>
+      n.frontmatter.status === 'incorporated' ||
+      n.frontmatter.status === 'retired',
   );
-  const todayPermanent = permanentNotes.filter(
-    (n) => String(n.frontmatter.created || '').startsWith(today),
+  const todayPermanent = permanentNotes.filter((n) =>
+    String(n.frontmatter.created || '').startsWith(today),
   );
 
   // Project note counts
@@ -575,7 +616,9 @@ export function generateDashboard(
     { fleeting: number; permanent: number; todos: number }
   >();
   for (const project of projects) {
-    const projectName = project.includes('/') ? project.split('/').pop()! : project;
+    const projectName = project.includes('/')
+      ? project.split('/').pop()!
+      : project;
     const fleetingCount = fleetingNotes.filter(
       (n) => n.frontmatter.project === projectName,
     ).length;
@@ -625,9 +668,15 @@ export function generateDashboard(
   lines.push('## Today');
   if (todayCaptures.length > 0 || todayPermanent.length > 0) {
     const parts: string[] = [];
-    if (todayCaptures.length > 0) parts.push(`${todayCaptures.length} capture${todayCaptures.length !== 1 ? 's' : ''}`);
+    if (todayCaptures.length > 0)
+      parts.push(
+        `${todayCaptures.length} capture${todayCaptures.length !== 1 ? 's' : ''}`,
+      );
     if (todayTriaged.length > 0) parts.push(`${todayTriaged.length} triaged`);
-    if (todayPermanent.length > 0) parts.push(`${todayPermanent.length} permanent note${todayPermanent.length !== 1 ? 's' : ''} created`);
+    if (todayPermanent.length > 0)
+      parts.push(
+        `${todayPermanent.length} permanent note${todayPermanent.length !== 1 ? 's' : ''} created`,
+      );
     lines.push(`- ${parts.join(', ')}`);
   } else {
     lines.push('- No activity today');
@@ -638,8 +687,14 @@ export function generateDashboard(
   lines.push('## Active Projects');
   for (const [projectName, counts] of projectNoteCounts) {
     const noteParts: string[] = [];
-    if (counts.fleeting > 0) noteParts.push(`${counts.fleeting} note${counts.fleeting !== 1 ? 's' : ''}`);
-    if (counts.todos > 0) noteParts.push(`${counts.todos} open todo${counts.todos !== 1 ? 's' : ''}`);
+    if (counts.fleeting > 0)
+      noteParts.push(
+        `${counts.fleeting} note${counts.fleeting !== 1 ? 's' : ''}`,
+      );
+    if (counts.todos > 0)
+      noteParts.push(
+        `${counts.todos} open todo${counts.todos !== 1 ? 's' : ''}`,
+      );
     lines.push(
       `- ${projectOverviewLink(projectName)} — ${noteParts.length > 0 ? noteParts.join(', ') : 'no notes yet'}`,
     );
@@ -649,7 +704,8 @@ export function generateDashboard(
   // Recent Notes
   lines.push('## Recent Notes');
   for (const note of recentNotes) {
-    const statusStr = note.status && note.status !== 'active' ? ` (${note.status})` : '';
+    const statusStr =
+      note.status && note.status !== 'active' ? ` (${note.status})` : '';
     lines.push(`- ${note.link}${statusStr}`);
   }
   lines.push('');
@@ -665,7 +721,9 @@ export function generateDashboard(
   if (tagCounts.size > 0) {
     lines.push('## Tag Cloud');
     const sortedTags = [...tagCounts.entries()].sort((a, b) => b[1] - a[1]);
-    lines.push(sortedTags.map(([tag, count]) => `${tag} (${count})`).join(' — '));
+    lines.push(
+      sortedTags.map(([tag, count]) => `${tag} (${count})`).join(' — '),
+    );
     lines.push('');
   }
 
@@ -709,15 +767,25 @@ export function enhanceProjectOverviews(
       const content = fs.readFileSync(path.join(plansDir, filename), 'utf-8');
       const parsed = parseFrontmatter(content);
       if (parsed) {
-        planFiles.push({ frontmatter: parsed.frontmatter, body: parsed.body, filename });
+        planFiles.push({
+          frontmatter: parsed.frontmatter,
+          body: parsed.body,
+          filename,
+        });
       } else {
-        planFiles.push({ frontmatter: { type: 'plan' }, body: content, filename });
+        planFiles.push({
+          frontmatter: { type: 'plan' },
+          body: content,
+          filename,
+        });
       }
     }
   }
 
   for (const project of projects) {
-    const projectName = project.includes('/') ? project.split('/').pop()! : project;
+    const projectName = project.includes('/')
+      ? project.split('/').pop()!
+      : project;
     const overviewSource = path.join(exo, project, 'overview.md');
     const vaultProjectDir = resolveProjectVaultDir(vault, projectName);
     const overviewVault = path.join(vaultProjectDir, 'overview.md');
@@ -741,12 +809,7 @@ export function enhanceProjectOverviews(
     );
 
     // Build computed section — filename-only links
-    const computed: string[] = [
-      '',
-      '---',
-      '## Vault Links (computed)',
-      '',
-    ];
+    const computed: string[] = ['', '---', '## Vault Links (computed)', ''];
 
     if (relatedFleeting.length > 0) {
       computed.push('### Recent Fleeting Notes', '');
@@ -826,10 +889,18 @@ export function syncToVault(
   fs.mkdirSync(vault, { recursive: true });
 
   // 1. Sync fleeting notes → 3. Resources/Exocortex/Fleeting/
-  syncNoteDir(path.join(exo, 'fleeting'), path.join(vault, VAULT_LAYOUT.fleeting), stats);
+  syncNoteDir(
+    path.join(exo, 'fleeting'),
+    path.join(vault, VAULT_LAYOUT.fleeting),
+    stats,
+  );
 
   // 2. Sync permanent notes → 3. Resources/Exocortex/Notes/
-  syncNoteDir(path.join(exo, 'notes'), path.join(vault, VAULT_LAYOUT.notes), stats);
+  syncNoteDir(
+    path.join(exo, 'notes'),
+    path.join(vault, VAULT_LAYOUT.notes),
+    stats,
+  );
 
   // 3. Sync projects → mapped PARA folders
   const projects = discoverProjects(exo);
@@ -866,7 +937,11 @@ export function syncToVault(
   syncPlainFile(path.join(exo, 'tags.md'), path.join(vault, 'Tags.md'), stats);
 
   // 5. Sync plans → 3. Resources/Exocortex/Plans/
-  syncPlainDir(path.join(exo, 'plans'), path.join(vault, VAULT_LAYOUT.plans), stats);
+  syncPlainDir(
+    path.join(exo, 'plans'),
+    path.join(vault, VAULT_LAYOUT.plans),
+    stats,
+  );
 
   // 6. Enhance project overviews with computed vault links
   enhanceProjectOverviews(exo, vault, stats);
@@ -891,7 +966,11 @@ export function runObsidianSync(
     const stats = syncToVault(exocortexPath, vaultPath);
     if (stats.written > 0 || stats.removed > 0) {
       logger.info(
-        { written: stats.written, removed: stats.removed, unchanged: stats.unchanged },
+        {
+          written: stats.written,
+          removed: stats.removed,
+          unchanged: stats.unchanged,
+        },
         'Obsidian vault sync completed',
       );
     } else {

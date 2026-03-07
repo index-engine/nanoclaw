@@ -694,7 +694,7 @@ describe('TelegramChannel', () => {
   // --- sendMessage ---
 
   describe('sendMessage', () => {
-    it('sends message via bot API', async () => {
+    it('sends message with Markdown parse_mode', async () => {
       const opts = createTestOpts();
       const channel = new TelegramChannel('test-token', opts);
       await channel.connect();
@@ -704,6 +704,7 @@ describe('TelegramChannel', () => {
       expect(currentBot().api.sendMessage).toHaveBeenCalledWith(
         '100200300',
         'Hello',
+        { parse_mode: 'Markdown' },
       );
     });
 
@@ -717,10 +718,39 @@ describe('TelegramChannel', () => {
       expect(currentBot().api.sendMessage).toHaveBeenCalledWith(
         '-1001234567890',
         'Group message',
+        { parse_mode: 'Markdown' },
       );
     });
 
-    it('splits messages exceeding 4096 characters', async () => {
+    it('falls back to plain text when Markdown is rejected', async () => {
+      const opts = createTestOpts();
+      const channel = new TelegramChannel('test-token', opts);
+      await channel.connect();
+
+      // First call (with Markdown) fails, second (plain) succeeds
+      currentBot()
+        .api.sendMessage.mockRejectedValueOnce(
+          new Error("can't parse entities"),
+        )
+        .mockResolvedValueOnce(undefined);
+
+      await channel.sendMessage('tg:100200300', 'unbalanced *bold');
+
+      expect(currentBot().api.sendMessage).toHaveBeenCalledTimes(2);
+      expect(currentBot().api.sendMessage).toHaveBeenNthCalledWith(
+        1,
+        '100200300',
+        'unbalanced *bold',
+        { parse_mode: 'Markdown' },
+      );
+      expect(currentBot().api.sendMessage).toHaveBeenNthCalledWith(
+        2,
+        '100200300',
+        'unbalanced *bold',
+      );
+    });
+
+    it('splits messages exceeding 4096 characters with parse_mode', async () => {
       const opts = createTestOpts();
       const channel = new TelegramChannel('test-token', opts);
       await channel.connect();
@@ -733,11 +763,13 @@ describe('TelegramChannel', () => {
         1,
         '100200300',
         'x'.repeat(4096),
+        { parse_mode: 'Markdown' },
       );
       expect(currentBot().api.sendMessage).toHaveBeenNthCalledWith(
         2,
         '100200300',
         'x'.repeat(904),
+        { parse_mode: 'Markdown' },
       );
     });
 

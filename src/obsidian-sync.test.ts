@@ -177,7 +177,11 @@ describe('syncToVault', () => {
     const stats = syncToVault(exoDir, vaultDir);
 
     expect(stats.written).toBeGreaterThan(0);
-    const vaultFile = path.join(vaultDir, VAULT_LAYOUT.fleeting, '2026-03-05-001-test.md');
+    const vaultFile = path.join(
+      vaultDir,
+      VAULT_LAYOUT.fleeting,
+      '2026-03-05-001-test.md',
+    );
     expect(fs.existsSync(vaultFile)).toBe(true);
     const content = fs.readFileSync(vaultFile, 'utf-8');
     expect(content).toContain('type: fleeting');
@@ -194,7 +198,11 @@ describe('syncToVault', () => {
 
     syncToVault(exoDir, vaultDir);
 
-    const vaultFile = path.join(vaultDir, VAULT_LAYOUT.notes, 'agent-goal-context.md');
+    const vaultFile = path.join(
+      vaultDir,
+      VAULT_LAYOUT.notes,
+      'agent-goal-context.md',
+    );
     expect(fs.existsSync(vaultFile)).toBe(true);
     const content = fs.readFileSync(vaultFile, 'utf-8');
     expect(content).toContain('type: permanent');
@@ -203,7 +211,10 @@ describe('syncToVault', () => {
   it('syncs nanoclaw project files to 1. Projects/AI Assistant/', () => {
     const ncDir = path.join(exoDir, 'nanoclaw');
     fs.mkdirSync(ncDir, { recursive: true });
-    fs.writeFileSync(path.join(ncDir, 'goals.md'), '# Goals\n- H1: Automation\n');
+    fs.writeFileSync(
+      path.join(ncDir, 'goals.md'),
+      '# Goals\n- H1: Automation\n',
+    );
     fs.writeFileSync(path.join(ncDir, 'todo.md'), '# Todo\n- Fix sync\n');
 
     syncToVault(exoDir, vaultDir);
@@ -231,7 +242,11 @@ describe('syncToVault', () => {
 
     syncToVault(exoDir, vaultDir);
 
-    expect(fs.existsSync(path.join(vaultDir, '1. Projects', 'newproject', 'goals.md'))).toBe(true);
+    expect(
+      fs.existsSync(
+        path.join(vaultDir, '1. Projects', 'newproject', 'goals.md'),
+      ),
+    ).toBe(true);
   });
 
   it('skips _template directory', () => {
@@ -241,7 +256,9 @@ describe('syncToVault', () => {
 
     syncToVault(exoDir, vaultDir);
 
-    expect(fs.existsSync(path.join(vaultDir, '1. Projects', '_template'))).toBe(false);
+    expect(fs.existsSync(path.join(vaultDir, '1. Projects', '_template'))).toBe(
+      false,
+    );
   });
 
   it('removes orphaned files from vault', () => {
@@ -257,23 +274,34 @@ describe('syncToVault', () => {
     );
 
     syncToVault(exoDir, vaultDir);
-    expect(fs.existsSync(path.join(vaultDir, VAULT_LAYOUT.fleeting, 'remove.md'))).toBe(true);
+    expect(
+      fs.existsSync(path.join(vaultDir, VAULT_LAYOUT.fleeting, 'remove.md')),
+    ).toBe(true);
 
     fs.unlinkSync(path.join(fleetingDir, 'remove.md'));
 
     const stats = syncToVault(exoDir, vaultDir);
     expect(stats.removed).toBe(1);
-    expect(fs.existsSync(path.join(vaultDir, VAULT_LAYOUT.fleeting, 'remove.md'))).toBe(false);
-    expect(fs.existsSync(path.join(vaultDir, VAULT_LAYOUT.fleeting, 'keep.md'))).toBe(true);
+    expect(
+      fs.existsSync(path.join(vaultDir, VAULT_LAYOUT.fleeting, 'remove.md')),
+    ).toBe(false);
+    expect(
+      fs.existsSync(path.join(vaultDir, VAULT_LAYOUT.fleeting, 'keep.md')),
+    ).toBe(true);
   });
 
   it('syncs soul.md to vault root', () => {
-    fs.writeFileSync(path.join(exoDir, 'soul.md'), '# Soul\nFounding philosophy.\n');
+    fs.writeFileSync(
+      path.join(exoDir, 'soul.md'),
+      '# Soul\nFounding philosophy.\n',
+    );
 
     syncToVault(exoDir, vaultDir);
 
     expect(fs.existsSync(path.join(vaultDir, 'soul.md'))).toBe(true);
-    expect(fs.readFileSync(path.join(vaultDir, 'soul.md'), 'utf-8')).toContain('Founding philosophy.');
+    expect(fs.readFileSync(path.join(vaultDir, 'soul.md'), 'utf-8')).toContain(
+      'Founding philosophy.',
+    );
   });
 
   it('handles empty exocortex gracefully', () => {
@@ -305,7 +333,11 @@ describe('syncToVault', () => {
 
     syncToVault(exoDir, vaultDir);
 
-    const vaultFile = path.join(vaultDir, VAULT_LAYOUT.plans, 'zettelkasten-obsidian-integration.md');
+    const vaultFile = path.join(
+      vaultDir,
+      VAULT_LAYOUT.plans,
+      'zettelkasten-obsidian-integration.md',
+    );
     expect(fs.existsSync(vaultFile)).toBe(true);
     const content = fs.readFileSync(vaultFile, 'utf-8');
     expect(content).toContain('Zettelkasten + Obsidian');
@@ -318,13 +350,19 @@ describe('syncToVault', () => {
     fs.writeFileSync(path.join(plansDir, 'remove.md'), '# Remove\n');
 
     syncToVault(exoDir, vaultDir);
-    expect(fs.existsSync(path.join(vaultDir, VAULT_LAYOUT.plans, 'remove.md'))).toBe(true);
+    expect(
+      fs.existsSync(path.join(vaultDir, VAULT_LAYOUT.plans, 'remove.md')),
+    ).toBe(true);
 
     fs.unlinkSync(path.join(plansDir, 'remove.md'));
     const stats = syncToVault(exoDir, vaultDir);
     expect(stats.removed).toBeGreaterThanOrEqual(1);
-    expect(fs.existsSync(path.join(vaultDir, VAULT_LAYOUT.plans, 'remove.md'))).toBe(false);
-    expect(fs.existsSync(path.join(vaultDir, VAULT_LAYOUT.plans, 'keep.md'))).toBe(true);
+    expect(
+      fs.existsSync(path.join(vaultDir, VAULT_LAYOUT.plans, 'remove.md')),
+    ).toBe(false);
+    expect(
+      fs.existsSync(path.join(vaultDir, VAULT_LAYOUT.plans, 'keep.md')),
+    ).toBe(true);
   });
 });
 
@@ -342,16 +380,43 @@ describe('generateDailyNotes', () => {
     fs.rmSync(vaultDir, { recursive: true, force: true });
   });
 
-  function createDailyNote(vault: string, date: string, content: string): string {
+  function createDailyNote(
+    vault: string,
+    date: string,
+    content: string,
+  ): string {
     const [year, monthNum, day] = date.split('-');
     const monthNames = [
-      'January', 'February', 'March', 'April', 'May', 'June',
-      'July', 'August', 'September', 'October', 'November', 'December',
+      'January',
+      'February',
+      'March',
+      'April',
+      'May',
+      'June',
+      'July',
+      'August',
+      'September',
+      'October',
+      'November',
+      'December',
     ];
     const monthName = monthNames[parseInt(monthNum, 10) - 1];
-    const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+    const dayNames = [
+      'Sunday',
+      'Monday',
+      'Tuesday',
+      'Wednesday',
+      'Thursday',
+      'Friday',
+      'Saturday',
+    ];
     const dayName = dayNames[new Date(`${date}T12:00:00`).getDay()];
-    const dir = path.join(vault, VAULT_LAYOUT.dailyNotes, year, `${monthNum}-${monthName}`);
+    const dir = path.join(
+      vault,
+      VAULT_LAYOUT.dailyNotes,
+      year,
+      `${monthNum}-${monthName}`,
+    );
     fs.mkdirSync(dir, { recursive: true });
     const filePath = path.join(dir, `${date}-${dayName}.md`);
     fs.writeFileSync(filePath, content);
@@ -366,7 +431,11 @@ describe('generateDailyNotes', () => {
       '---\ntype: fleeting\nstatus: active\nproject: general\nsource: things\n---\nTest.\n',
     );
 
-    const dailyPath = createDailyNote(vaultDir, '2026-03-05', '# Thursday\n\nJournal entry.\n');
+    const dailyPath = createDailyNote(
+      vaultDir,
+      '2026-03-05',
+      '# Thursday\n\nJournal entry.\n',
+    );
 
     const stats = freshStats();
     generateDailyNotes(exoDir, vaultDir, stats);
@@ -452,7 +521,8 @@ describe('generateDailyNotes', () => {
     expect(content).toContain('[[2026-03-05-001-test]]');
     expect(content).toContain('[[2026-03-05-002-new]]');
     // Should only have one exocortex section
-    const startCount = (content.match(/<!-- exocortex-start -->/g) || []).length;
+    const startCount = (content.match(/<!-- exocortex-start -->/g) || [])
+      .length;
     expect(startCount).toBe(1);
   });
 
@@ -464,7 +534,8 @@ describe('generateDailyNotes', () => {
       '---\ntype: fleeting\nstatus: active\nproject: general\n---\nTest.\n',
     );
 
-    const existingContent = '---\ndate: 2026-03-05\n---\n# Thursday\n\n## Journal\n\nHad a great day.\n\n## Tasks\n\n- [x] Did something\n';
+    const existingContent =
+      '---\ndate: 2026-03-05\n---\n# Thursday\n\n## Journal\n\nHad a great day.\n\n## Tasks\n\n- [x] Did something\n';
     const dailyPath = createDailyNote(vaultDir, '2026-03-05', existingContent);
 
     const stats = freshStats();
@@ -700,7 +771,10 @@ describe('enhanceProjectOverviews', () => {
   it('enhances project overview with filename-only wiki-links', () => {
     const ncDir = path.join(exoDir, 'nanoclaw');
     fs.mkdirSync(ncDir, { recursive: true });
-    fs.writeFileSync(path.join(ncDir, 'overview.md'), '# NanoClaw Overview\n\nMain project.\n');
+    fs.writeFileSync(
+      path.join(ncDir, 'overview.md'),
+      '# NanoClaw Overview\n\nMain project.\n',
+    );
     fs.writeFileSync(path.join(ncDir, 'goals.md'), '# Goals\n');
     fs.writeFileSync(path.join(ncDir, 'todo.md'), '# Todo\n');
 
@@ -761,8 +835,14 @@ describe('enhanceProjectOverviews', () => {
     enhanceProjectOverviews(exoDir, vaultDir, stats);
 
     // Should be in 1. Projects/AI Assistant/, not Projects/nanoclaw/
-    expect(fs.existsSync(path.join(vaultDir, PROJECT_VAULT_MAP.nanoclaw, 'overview.md'))).toBe(true);
-    expect(fs.existsSync(path.join(vaultDir, 'Projects', 'nanoclaw', 'overview.md'))).toBe(false);
+    expect(
+      fs.existsSync(
+        path.join(vaultDir, PROJECT_VAULT_MAP.nanoclaw, 'overview.md'),
+      ),
+    ).toBe(true);
+    expect(
+      fs.existsSync(path.join(vaultDir, 'Projects', 'nanoclaw', 'overview.md')),
+    ).toBe(false);
   });
 
   it('handles projects with no notes gracefully', () => {
