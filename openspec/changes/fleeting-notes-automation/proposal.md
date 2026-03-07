@@ -62,7 +62,8 @@ All appends — to daily notes, evergreen notes, or any other file — use the s
 ## {Section Title} (appended {YYYY-MM-DD} ~{HH:MM} {TZ})
 
 - **{Item title}** ({YYYY-MM-DD}) [[Fleeting/{year}/{month}/{day}/{slug}|*]]
-  Notes: {full notes text, if any}
+  **Notes:** {full notes text, if any}
+  **Proposed:** {routing proposal, if applicable}
 ```
 
 Rules:
@@ -111,9 +112,9 @@ These are the live objects and their last known states, so context survives acro
 | Ahrens Category | System Category | Location |
 |-----------------|----------------|----------|
 | Fleeting note | Fleeting note | `Fleeting/{year}/{month}/{day}/{slug}.md` |
-| Permanent note | Permanent note (insight) | `Notes/` or project directory |
+| Permanent note | Permanent note (insight) | `2. Areas/{topic}/{slug}.md` |
 | Project note | To-do / project-scoped note | `{project}/notes/{year}/{month}/{day}/{slug}.md` |
-| Literature note | *(future)* | *(reading notes)* |
+| Literature note | Literature note (source material) | `2. Areas/{topic}/literature/{author-slug}.md` |
 
 ### Conversion Paths
 
@@ -121,10 +122,43 @@ Fleeting notes convert via two paths (or both, or discard):
 
 1. **Fleeting -> permanent note** (insight worth keeping) — rewrite in own words, link to slip-box
    - **Constraint:** AI cannot create permanent notes alone. User must provide brain dump or confirm AI's proposed rewrite.
-2. **Fleeting -> project note / to-do** (action item) — create project note in `{project}/notes/{year}/{month}/{day}/{slug}.md`, add `#task` to the project note (collected by `todos.md` query block)
-3. **Fleeting -> retired** (no action needed) — mark `status: retired`, no destination created
+   - Permanent notes live in `2. Areas/{topic}/` — organized by topic, not project. They outlive any project.
+2. **Fleeting -> permanent note + literature note** (insight from a source) — both are created:
+   - Literature note: selective paraphrase at top (your reading), full source text below (preservation against link rot). Lives in `2. Areas/{topic}/literature/`.
+   - Permanent note: your atomic insight, links to the literature note. Lives in `2. Areas/{topic}/`.
+   - Fleeting note frontmatter gets both `converted_to:` and `literature_note:` links.
+3. **Fleeting -> project note / to-do** (action item) — create project note in `{project}/notes/{year}/{month}/{day}/{slug}.md`, add `#task` to the project note (collected by `todos.md` query block)
+4. **Fleeting -> retired** (no action needed) — mark `status: retired`, no destination created
 
-Both paths mark the fleeting note as `status: completed` and add `converted_to:` frontmatter linking to the destination.
+Paths 1-3 mark the fleeting note as `status: completed` and add `converted_to:` frontmatter linking to the destination.
+
+### Processing Constraint
+
+AI **proposes** routing decisions but does not execute them automatically. The user reviews and confirms before any note is created, moved, or marked completed. This is a hard constraint until explicitly relaxed.
+
+### Things Ingestion (future change)
+
+- **Long-term:** Things Today is the sole ingestion source. No other Things views are used.
+- **Completion model:** When a note is ingested and routed, it gets marked as **completed in Things** (not moved to an "ingested" list). This replaces the current NanoClaw ingestion setup that moves notes to an ingested state.
+- Current `things-sync.ts` will need to be updated to use this model.
+
+### Literature Notes
+
+Literature notes preserve the original source material. Structure:
+- **Body:** The actual full text of the source — not a paraphrase, not a summary. The real text, preserved against link rot.
+- **Frontmatter:** `author`, `date`, `url`, `type: literature-note`
+- **Constraint:** Literature notes must contain the verbatim source text. AI summarization is not acceptable — the point is preservation.
+- **Constraint:** When WebFetch is used (which AI-summarizes content), the note must clearly state that the text is a WebFetch summary, not verbatim. E.g. `> Note: This text was retrieved via WebFetch and may be AI-summarized, not verbatim.`
+- Future: an agent fetches the raw article text (not AI-processed) and creates the literature note automatically
+
+### Permanent Notes
+
+Permanent notes capture YOUR insight — atomic, in your own words, standing alone without context. They:
+- Live in `2. Areas/{topic}/` (organized by topic, not project — they outlive projects)
+- Body is **only your text** — no source links, no references, no citations in the body
+- Connection to literature notes lives in frontmatter (`literature:` field) — machine-readable, body stays clean
+- Link to other permanent notes (future: agent proposes connections based on semantic similarity)
+- Are never tied to a completion state — they're part of the growing slip-box
 
 ### `#task` Global Filter
 
@@ -148,6 +182,20 @@ When converting fleeting notes into project notes, an AI pre-processing step sho
 - Assess scope and feasibility
 - Surface related existing work, specs, or proposals
 - Turn raw captures into grounded, actionable project notes rather than aspirational to-dos
+- For URL-bearing fleeting notes: fetch article text, draft a literature note with "My reading" section for user confirmation
+
+### Routing Agent (future)
+
+A dedicated agent that handles fleeting note routing. It:
+- Has its own explicit goals file (what routing decisions to optimize for, how to prioritize)
+- Proposes routing decisions (project note, permanent note, literature note, retire) — does not execute without user confirmation
+- Reads the project registry, existing project notes, and permanent notes to inform proposals
+- Could incorporate the AI pre-processing step (check repos, assess feasibility) as part of its routing proposal
+- Operates on its own cadence (e.g. when new fleeting notes arrive)
+
+### Connection Agent (future)
+
+An agent that periodically scans permanent notes and proposes `[[links]]` between them based on semantic similarity. This builds the slip-box's web of connections — the core value of Zettelkasten. The agent proposes; the user confirms.
 
 ### Reconciliation (future)
 

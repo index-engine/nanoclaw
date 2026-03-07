@@ -173,9 +173,64 @@ Mapped the system's note types to Ahrens' categories:
 ### Decisions documented in proposal (cumulative from Stage 2):
 11. `#task` global filter for Obsidian Tasks plugin
 12. Per-project `todos.md` with Tasks query blocks
-13. Project notes live in `{project}/notes/` directory
+13. Project notes live in `{project}/notes/{year}/{month}/{day}/` directory
 14. AI cannot create permanent notes alone — user must confirm
 15. Reconciliation (future): confirm source updates when downstream tasks complete
+
+### Action 3e: Process remaining fleeting notes (continued session)
+
+**Apply?** — retired (no action needed)
+
+**Nanoclaw describe evergreen notes** → NanoClaw project note with 2 #task items:
+- Define canonical agent setup structure (LADE + bounded context + work recording)
+- Define project goals file format and governance model
+- Future feature noted: AI pre-processing should check repo for existing implementation before creating project notes
+
+**Venus mars** → Venus Mars project note (`review-revised-draft.md`) with #task to review revised draft on Overleaf. Includes co-author email with review instructions (focus on replicability). Created Venus Mars `todos.md`.
+
+**Hannibal on Ai** → First permanent note + literature note pair:
+- Literature note: `2. Areas/AI Safety/literature/honnibal-clownpocalypse.md`
+  - "My reading" section (selective paraphrase) + full article text (preservation)
+  - Article fetched via WebFetch tool
+- Permanent note: `2. Areas/AI Safety/ai-race-undermines-security.md`
+  - User's atomic insight: competitive pressure overrides security discipline
+  - Links to literature note as source
+- Created new `2. Areas/AI Safety/` area
+- Fleeting note gets both `converted_to:` and `literature_note:` frontmatter
+
+### Decisions (continued):
+16. Networking moved from Areas to Projects (it has deliverables, not just ongoing interest)
+17. Project notes use date-structured paths: `{project}/notes/{year}/{month}/{day}/{slug}.md`
+18. `todos.md` uses only Tasks query block — no manual duplicate items
+19. Daily note Fleeting Notes section: Unprocessed → Routed (shows movement)
+20. Literature notes: full source text (preservation against link rot)
+21. Permanent notes: only user's words in body, no references. Literature link in frontmatter + `*` link at bottom
+22. Permanent notes live in `2. Areas/{topic}/` — organized by topic, outlive projects
+23. Literature notes live in `2. Areas/{topic}/literature/`
+24. Future: connection agent proposes links between permanent notes (semantic similarity)
+25. Future: AI pre-processing fetches article text and drafts literature notes for user confirmation
+26. Future: routing agent with its own goals file, proposes routing decisions
+27. AI proposes routing but does not execute automatically — user confirms first (hard constraint)
+28. Things Today is sole ingestion source; routed items marked completed in Things (not moved to ingested list)
+29. WebFetch-sourced text must be labeled as AI-summarized, not verbatim
+30. Daily note format spec created: `specs/daily-note-format.md`
+31. Notes in daily note: short (2 lines or less) = **Notes:** verbatim; long = **Summary:** AI summary in 2 lines
+32. **Proposed:** must include related project from project registry
+33. Unprocessed items use numbered lists
+34. Human **Response:** area after proposals, before Routed section
+35. Unprocessed items carry forward to next day until routed
+
+### Action 3f: Process NanoClaw project items from Things (batch 2)
+
+Ingested 5 items from Things NanoClaw project into daily note with fleeting note files, AI proposals, and human response area. User responded:
+
+1. **Nanoclaw describe evergreen notes** → retired (duplicate)
+2. **Nanoclaw try slack** → retired (don't want Slack)
+3. **@nanoclaw implement from bottom** → project note `creative-conveyor-belt.md` with #task (creative conveyor belt — connect notes to drafts, assembly line workflow)
+4. **@nanoclaw ingest from email too** → retired (already in OpenSpec)
+5. **@nanoclaw agent that prepares prompts** → retired (already in OpenSpec)
+
+This was the first test of the propose → human response → execute flow.
 
 ---
 
@@ -197,3 +252,7 @@ Mapped the system's note types to Ahrens' categories:
 - Templates/ correctly excluded from mass-complete — preserves template checkboxes
 - The `#task` filter elegantly solves the "checkbox overload" problem without requiring migration of existing content
 - End-to-end test (Pedro Reply) validates the full fleeting -> project note -> todos.md pipeline
+- All 5 of today's fleeting notes processed through all 4 conversion paths: #task (Pedro, Venus Mars), project note (NanoClaw), permanent+literature (Hannibal), retired (Apply?)
+- Literature note structure: full source text preserved, permanent note is purely user's voice
+- First successful propose → response → execute cycle with NanoClaw batch — the format works
+- Daily note format spec pinned down: numbered items, Notes/Summary distinction, Proposed with project, Response area, carryover rule
