@@ -15,6 +15,7 @@ import {
   THINGS_SYNC_INTERVAL,
   OBSIDIAN_VAULT_PATH,
   OBSIDIAN_SYNC_INTERVAL,
+  FLEETING_NOTES_INTERVAL,
 } from './config.js';
 import { TelegramChannel } from './channels/telegram.js';
 import { WhatsAppChannel } from './channels/whatsapp.js';
@@ -52,6 +53,7 @@ import { Channel, NewMessage, RegisteredGroup } from './types.js';
 import { logger } from './logger.js';
 import { startThingsSync } from './things-sync.js';
 import { startExocortexSync } from './exocortex-sync.js';
+import { startFleetingNotesPipeline } from './fleeting-notes/index.js';
 import { startObsidianSync } from './obsidian-sync.js';
 
 // Re-export for backwards compatibility during refactor
@@ -551,6 +553,15 @@ async function main(): Promise<void> {
       EXOCORTEX_PATH,
       OBSIDIAN_VAULT_PATH,
       OBSIDIAN_SYNC_INTERVAL,
+    );
+  }
+  // Fleeting notes pipeline (Things → vault → daily note)
+  if (OBSIDIAN_VAULT_PATH && THINGS_AUTH_TOKEN) {
+    startFleetingNotesPipeline(
+      OBSIDIAN_VAULT_PATH,
+      THINGS_DB_PATH,
+      THINGS_AUTH_TOKEN,
+      FLEETING_NOTES_INTERVAL,
     );
   }
   queue.setProcessMessagesFn(processGroupMessages);

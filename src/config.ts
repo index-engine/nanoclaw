@@ -17,6 +17,7 @@ const envConfig = readEnvFile([
   'EXOCORTEX_PATH',
   'OBSIDIAN_VAULT_PATH',
   'OBSIDIAN_SYNC_INTERVAL',
+  'FLEETING_NOTES_INTERVAL',
 ]);
 
 export const ASSISTANT_NAME =
@@ -100,6 +101,12 @@ export const OBSIDIAN_VAULT_PATH =
 export const OBSIDIAN_SYNC_INTERVAL = parseInt(
   process.env.OBSIDIAN_SYNC_INTERVAL ||
     envConfig.OBSIDIAN_SYNC_INTERVAL ||
+    '600000',
+  10,
+);
+export const FLEETING_NOTES_INTERVAL = parseInt(
+  process.env.FLEETING_NOTES_INTERVAL ||
+    envConfig.FLEETING_NOTES_INTERVAL ||
     '600000',
   10,
 );
