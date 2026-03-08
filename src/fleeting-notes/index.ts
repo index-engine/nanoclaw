@@ -17,6 +17,7 @@ import {
   collectUnprocessedNotes,
   updateDailyNote,
 } from './daily-note.js';
+import { ingestEmails, type EmailConfig } from './email-ingest.js';
 import { ingestThingsToday } from './ingest.js';
 import { runIntegrityChecks } from './integrity.js';
 import { loadRegistry } from './registry.js';
@@ -24,6 +25,7 @@ import type { IngestResult, IntegrityReport } from './types.js';
 
 export interface PipelineResult {
   ingest: IngestResult;
+  emailIngest: IngestResult;
   unprocessedCount: number;
   dailyNoteUpdated: boolean;
   integrity: IntegrityReport;
@@ -44,6 +46,8 @@ export async function runPipeline(
   options: {
     /** Skip Things ingestion (useful when only updating daily note). */
     skipIngest?: boolean;
+    /** Gmail IMAP config for email ingestion. */
+    emailConfig?: EmailConfig;
     /** Run integrity checks after pipeline. */
     runIntegrity?: boolean;
     /** Directories to check for date prefixes. */
@@ -65,6 +69,21 @@ export async function runPipeline(
           skipped: ingestResult.skipped.length,
         },
         'Fleeting notes ingested from Things Today',
+      );
+    }
+  }
+
+  // Stage 1b: Ingest emails from Gmail
+  let emailResult: IngestResult = { created: [], skipped: [], errors: [] };
+  if (options.emailConfig?.user) {
+    emailResult = await ingestEmails(vaultPath, options.emailConfig);
+    if (emailResult.created.length > 0) {
+      logger.info(
+        {
+          created: emailResult.created.length,
+          skipped: emailResult.skipped.length,
+        },
+        'Fleeting notes ingested from email',
       );
     }
   }
@@ -103,6 +122,7 @@ export async function runPipeline(
 
   return {
     ingest: ingestResult,
+    emailIngest: emailResult,
     unprocessedCount: unprocessed.length,
     dailyNoteUpdated,
     integrity: integrityReport,
@@ -120,16 +140,22 @@ export function startFleetingNotesPipeline(
   thingsDbPath: string,
   thingsAuthToken: string,
   intervalMs: number,
+  emailConfig?: EmailConfig,
 ): void {
   if (pipelineRunning) {
     logger.debug('Fleeting notes pipeline already running');
     return;
   }
   pipelineRunning = true;
-  logger.info({ intervalMs, vaultPath }, 'Starting fleeting notes pipeline');
+  logger.info(
+    { intervalMs, vaultPath, emailEnabled: !!emailConfig?.user },
+    'Starting fleeting notes pipeline',
+  );
 
   const run = () => {
-    runPipeline(vaultPath, thingsDbPath, thingsAuthToken).catch((err) => {
+    runPipeline(vaultPath, thingsDbPath, thingsAuthToken, {
+      emailConfig,
+    }).catch((err) => {
       logger.error({ err }, 'Fleeting notes pipeline error');
     });
   };

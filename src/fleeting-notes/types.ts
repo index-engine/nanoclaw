@@ -8,6 +8,9 @@ export interface FleetingNote {
   body: string;
   source: 'things' | 'telegram' | 'email';
   thingsUuid?: string;
+  emailMessageId?: string;
+  emailFrom?: string;
+  emailSubject?: string;
   created: string; // YYYY-MM-DD
   status: 'raw' | 'completed' | 'retired';
   project?: string;

@@ -18,6 +18,10 @@ const envConfig = readEnvFile([
   'OBSIDIAN_VAULT_PATH',
   'OBSIDIAN_SYNC_INTERVAL',
   'FLEETING_NOTES_INTERVAL',
+  'GMAIL_USER',
+  'GMAIL_APP_PASSWORD',
+  'GMAIL_ALLOWED_SENDERS',
+  'GMAIL_SYNC_INTERVAL',
 ]);
 
 export const ASSISTANT_NAME =
@@ -107,6 +111,26 @@ export const OBSIDIAN_SYNC_INTERVAL = parseInt(
 export const FLEETING_NOTES_INTERVAL = parseInt(
   process.env.FLEETING_NOTES_INTERVAL ||
     envConfig.FLEETING_NOTES_INTERVAL ||
+    '600000',
+  10,
+);
+
+// Gmail ingestion configuration
+export const GMAIL_USER =
+  process.env.GMAIL_USER || envConfig.GMAIL_USER || '';
+export const GMAIL_APP_PASSWORD =
+  process.env.GMAIL_APP_PASSWORD || envConfig.GMAIL_APP_PASSWORD || '';
+export const GMAIL_ALLOWED_SENDERS = (
+  process.env.GMAIL_ALLOWED_SENDERS ||
+  envConfig.GMAIL_ALLOWED_SENDERS ||
+  ''
+)
+  .split(',')
+  .map((s) => s.trim().toLowerCase())
+  .filter(Boolean);
+export const GMAIL_SYNC_INTERVAL = parseInt(
+  process.env.GMAIL_SYNC_INTERVAL ||
+    envConfig.GMAIL_SYNC_INTERVAL ||
     '600000',
   10,
 );

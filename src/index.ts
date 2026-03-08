@@ -16,6 +16,9 @@ import {
   OBSIDIAN_VAULT_PATH,
   OBSIDIAN_SYNC_INTERVAL,
   FLEETING_NOTES_INTERVAL,
+  GMAIL_USER,
+  GMAIL_APP_PASSWORD,
+  GMAIL_ALLOWED_SENDERS,
 } from './config.js';
 import { TelegramChannel } from './channels/telegram.js';
 import { WhatsAppChannel } from './channels/whatsapp.js';
@@ -562,6 +565,13 @@ async function main(): Promise<void> {
       THINGS_DB_PATH,
       THINGS_AUTH_TOKEN,
       FLEETING_NOTES_INTERVAL,
+      GMAIL_USER
+        ? {
+            user: GMAIL_USER,
+            password: GMAIL_APP_PASSWORD,
+            allowedSenders: GMAIL_ALLOWED_SENDERS,
+          }
+        : undefined,
     );
   }
   queue.setProcessMessagesFn(processGroupMessages);
