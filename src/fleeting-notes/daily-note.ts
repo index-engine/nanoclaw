@@ -10,6 +10,7 @@ import fs from 'fs';
 import path from 'path';
 
 import { logger } from '../logger.js';
+import { generateLLMProposal } from './agent-route.js';
 import { loadRegistry } from './registry.js';
 import type {
   FleetingNote,
@@ -60,9 +61,12 @@ export function collectUnprocessedNotes(vaultPath: string): FleetingNote[] {
         const body = bodyMatch ? bodyMatch[1].trim() : '';
 
         const relPath = path.relative(vaultPath, absPath);
+        // Strip date prefix (DD-) from filename to get the pure slug
+        const rawName = entry.name.replace('.md', '');
+        const slug = rawName.replace(/^\d{2}-/, '');
         notes.push({
           path: relPath,
-          slug: entry.name.replace('.md', ''),
+          slug,
           title,
           body,
           source: (fm.source as FleetingNote['source']) || 'things',
@@ -76,24 +80,65 @@ export function collectUnprocessedNotes(vaultPath: string): FleetingNote[] {
   };
 
   walk(fleetingDir);
+
+  // Only include notes created within the last 3 days
+  const cutoff = new Date();
+  cutoff.setDate(cutoff.getDate() - 3);
+  const cutoffStr = cutoff.toISOString().slice(0, 10);
+  const recent = notes.filter((n) => !n.created || n.created >= cutoffStr);
+
   // Sort by created date (oldest first)
-  notes.sort((a, b) => a.created.localeCompare(b.created));
-  return notes;
+  recent.sort((a, b) => a.created.localeCompare(b.created));
+  return recent;
 }
 
 /**
- * Generate a rule-based routing proposal for a fleeting note.
- * Phase 1: heuristic matching. Phase 2 will use container agent AI.
+ * Generate a routing proposal for a fleeting note.
+ * Tries heuristic matching first. When heuristics can't match a project,
+ * calls `claude -p` for an AI-generated proposal.
  */
 export function generateProposal(
   note: FleetingNote,
   registry: ProjectRegistryEntry[],
 ): RoutingProposal {
+  const heuristic = generateHeuristicProposal(note, registry);
+  if (heuristic) return heuristic;
+
+  // Heuristics didn't match — try LLM
+  const llmResult = generateLLMProposal(note, registry);
+  if (llmResult) {
+    const projectLine = llmResult.project
+      ? `Project ${llmResult.project}.`
+      : 'No project match.';
+    const typeLabel = llmResult.type === 'task' ? '#task'
+      : llmResult.type === 'literature' ? 'Literature note'
+      : llmResult.type === 'retire' ? 'Retire'
+      : 'Permanent note';
+    return {
+      projectLine,
+      text: `${projectLine} ${typeLabel} — ${llmResult.description}`,
+    };
+  }
+
+  // LLM failed too — ultimate fallback
+  return {
+    projectLine: 'No project match.',
+    text: 'No project match. Permanent note — unmatched idea, awaiting triage.',
+  };
+}
+
+/**
+ * Heuristic proposal generation. Returns null when it can't make
+ * a confident match (no project, no clear conversion path).
+ */
+export function generateHeuristicProposal(
+  note: FleetingNote,
+  registry: ProjectRegistryEntry[],
+): RoutingProposal | null {
   const text = `${note.title} ${note.body}`.toLowerCase();
 
   // Find matching project
   let matchedProject: ProjectRegistryEntry | null = null;
-  // From detectProject logic (already run at ingest time, stored in note.project)
   if (note.project) {
     matchedProject =
       registry.find(
@@ -160,10 +205,8 @@ export function generateProposal(
     };
   }
 
-  return {
-    projectLine,
-    text: `No project match. Idea log entry — capture for future routing, or retire if context is lost.`,
-  };
+  // No confident match — return null to trigger LLM
+  return null;
 }
 
 function isOlderThanWeeks(dateStr: string, weeks: number): boolean {
@@ -202,10 +245,11 @@ export function formatDailyNoteEntry(
   lines.push(`    **Proposed:** ${proposal.text}`);
 
   // Action controls
-  lines.push('    - [ ] Accept');
   lines.push('    - [ ] Retire');
-  lines.push('    **Chat:**');
   lines.push('    **Response:**');
+  lines.push('    <!-- r -->');
+  lines.push('    <!-- /r -->');
+  lines.push('    - [ ] Process');
 
   return lines.join('\n');
 }
@@ -215,22 +259,10 @@ export function buildDailyNoteSection(
   notes: FleetingNote[],
   registry: ProjectRegistryEntry[],
 ): string {
-  const now = new Date();
-  const tz =
-    Intl.DateTimeFormat().resolvedOptions().timeZone?.split('/').pop() || 'UTC';
-  const time = now.toLocaleTimeString('en-US', {
-    hour: '2-digit',
-    minute: '2-digit',
-    hour12: false,
-  });
-  const dateStr = now.toISOString().slice(0, 10);
-
   const lines: string[] = [];
   lines.push(FLEETING_START);
   lines.push('');
-  lines.push(
-    `## Fleeting Notes (appended ${dateStr} ~${time} ${tz})`,
-  );
+  lines.push('## Fleeting Notes');
   lines.push('');
 
   if (notes.length === 0) {
@@ -246,7 +278,7 @@ export function buildDailyNoteSection(
       lines.push('');
     }
 
-    lines.push('**Bulk Response:**');
+    lines.push('- [ ] Process All');
     lines.push('');
   }
 
@@ -301,14 +333,55 @@ export function findDailyNoteFile(
 }
 
 /**
+ * Create today's daily note if it doesn't exist yet.
+ * Pattern: 0a. Daily Notes/{year}/{month}-{MonthName}/{YYYY-MM-DD}-{DayName}.md
+ */
+export function createDailyNoteIfMissing(
+  vaultPath: string,
+  date?: Date,
+): string {
+  const d = date || new Date();
+  const year = String(d.getFullYear());
+  const monthNum = String(d.getMonth() + 1).padStart(2, '0');
+  const months = [
+    'January', 'February', 'March', 'April', 'May', 'June',
+    'July', 'August', 'September', 'October', 'November', 'December',
+  ];
+  const monthName = months[d.getMonth()];
+  const dayNum = String(d.getDate()).padStart(2, '0');
+  const days = [
+    'Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday',
+  ];
+  const dayName = days[d.getDay()];
+
+  const monthDir = path.join(
+    vaultPath,
+    '0a. Daily Notes',
+    year,
+    `${monthNum}-${monthName}`,
+  );
+  fs.mkdirSync(monthDir, { recursive: true });
+
+  const filePath = path.join(
+    monthDir,
+    `${year}-${monthNum}-${dayNum}-${dayName}.md`,
+  );
+  if (!fs.existsSync(filePath)) {
+    fs.writeFileSync(filePath, `# ${year}-${monthNum}-${dayNum} ${dayName}\n`);
+    logger.info({ path: filePath }, 'Created daily note');
+  }
+  return filePath;
+}
+
+/**
  * Update the daily note with the Fleeting Notes section.
+ * Creates the daily note if it doesn't exist yet.
  * Uses HTML comment markers for idempotent replacement.
  */
 export function updateDailyNote(vaultPath: string, section: string): boolean {
-  const dailyNotePath = findDailyNoteFile(vaultPath);
+  let dailyNotePath = findDailyNoteFile(vaultPath);
   if (!dailyNotePath) {
-    logger.warn('No daily note file found for today');
-    return false;
+    dailyNotePath = createDailyNoteIfMissing(vaultPath);
   }
 
   let content = fs.readFileSync(dailyNotePath, 'utf-8');
@@ -331,4 +404,88 @@ export function updateDailyNote(vaultPath: string, section: string): boolean {
   fs.writeFileSync(dailyNotePath, content);
   logger.info({ path: dailyNotePath }, 'Daily note updated with fleeting notes section');
   return true;
+}
+
+/**
+ * Append only new fleeting note entries to the existing daily note section.
+ * Preserves all existing content (user edits, checked boxes, responses).
+ * Returns the number of new entries appended.
+ */
+export function appendNewEntries(
+  vaultPath: string,
+  notes: FleetingNote[],
+  registry: ProjectRegistryEntry[],
+): number {
+  let dailyNotePath = findDailyNoteFile(vaultPath);
+  if (!dailyNotePath) {
+    dailyNotePath = createDailyNoteIfMissing(vaultPath);
+  }
+
+  let content = fs.readFileSync(dailyNotePath, 'utf-8');
+  const startIdx = content.indexOf(FLEETING_START);
+  const endIdx = content.indexOf(FLEETING_END);
+
+  // If no section exists yet, build the full section (first time)
+  if (startIdx === -1 || endIdx === -1) {
+    const section = buildDailyNoteSection(notes, registry);
+    return updateDailyNote(vaultPath, section) ? notes.length : 0;
+  }
+
+  // Find which notes are already mentioned in the section
+  const existingSection = content.slice(startIdx, endIdx);
+  const newNotes = notes.filter(
+    (n) => !existingSection.includes(n.path.replace('.md', '')),
+  );
+
+  if (newNotes.length === 0) return 0;
+
+  // Find the highest existing item number
+  const numberMatches = existingSection.match(/^\d+\./gm);
+  let nextIndex = numberMatches
+    ? Math.max(...numberMatches.map((m) => parseInt(m, 10))) + 1
+    : 1;
+
+  // Build entries for new notes only
+  const newLines: string[] = [];
+  for (const note of newNotes) {
+    const proposal = generateProposal(note, registry);
+    newLines.push(formatDailyNoteEntry(nextIndex, note, proposal));
+    newLines.push('');
+    nextIndex++;
+  }
+  const newBlock = newLines.join('\n');
+
+  // Insert before "Process All" (checked or unchecked) or "### Routed", whichever comes first
+  const section = content.slice(startIdx, endIdx);
+  let insertPoint = section.indexOf('- [ ] Process All');
+  if (insertPoint === -1) insertPoint = section.indexOf('- [x] Process All');
+  if (insertPoint === -1) insertPoint = section.indexOf('### Routed');
+  if (insertPoint === -1) {
+    // Fallback: insert before fleeting-end
+    insertPoint = section.length;
+  }
+
+  const absInsertPoint = startIdx + insertPoint;
+  content =
+    content.slice(0, absInsertPoint) +
+    newBlock + '\n' +
+    content.slice(absInsertPoint);
+
+  // Update the "Unprocessed" count in the header
+  const totalRaw = notes.length;
+  const source = [...new Set(notes.map((n) => n.source))].join(', ');
+  content = content.replace(
+    /### Unprocessed \([^)]+\)/,
+    `### Unprocessed (${totalRaw} from ${source})`,
+  );
+
+  // Uncheck Process All so new notes aren't auto-routed
+  content = content.replace('- [x] Process All', '- [ ] Process All');
+
+  fs.writeFileSync(dailyNotePath, content);
+  logger.info(
+    { appended: newNotes.length, path: dailyNotePath },
+    'Appended new entries to daily note',
+  );
+  return newNotes.length;
 }

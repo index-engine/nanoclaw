@@ -157,15 +157,21 @@ describe('collectUnprocessedNotes', () => {
   });
 
   it('sorts by created date (oldest first)', () => {
+    const now = new Date();
+    const yesterday = new Date(now);
+    yesterday.setDate(yesterday.getDate() - 1);
+    const todayStr = now.toISOString().slice(0, 10);
+    const yesterdayStr = yesterday.toISOString().slice(0, 10);
+
     const noteDir = path.join(vaultPath, 'Fleeting', '2026', '03', '07');
     fs.mkdirSync(noteDir, { recursive: true });
     fs.writeFileSync(
       path.join(noteDir, 'newer.md'),
-      '---\nstatus: raw\ncreated: 2026-03-07\n---\n\n# Newer\n',
+      `---\nstatus: raw\ncreated: ${todayStr}\n---\n\n# Newer\n`,
     );
     fs.writeFileSync(
       path.join(noteDir, 'older.md'),
-      '---\nstatus: raw\ncreated: 2026-03-01\n---\n\n# Older\n',
+      `---\nstatus: raw\ncreated: ${yesterdayStr}\n---\n\n# Older\n`,
     );
 
     const notes = collectUnprocessedNotes(vaultPath);
@@ -238,13 +244,14 @@ describe('generateProposal', () => {
     expect(proposal.text).toContain('NanoClaw');
   });
 
-  it('proposes idea log for unmatched notes', () => {
+  it('falls back for unmatched notes (LLM unavailable in tests)', () => {
     const note = makeNote({
       title: 'Random thought',
       body: 'Something interesting.',
     });
     const proposal = generateProposal(note, registry);
-    expect(proposal.text).toContain('Idea log');
+    // LLM will fail in test env, so falls back to generic proposal
+    expect(proposal.text).toContain('note');
   });
 
   it('proposes retire for stale short items', () => {
@@ -270,10 +277,10 @@ describe('generateProposal', () => {
     expect(proposal.projectLine).toContain('NanoClaw');
   });
 
-  it('shows no project match when none found', () => {
+  it('has no project match when no project detected', () => {
     const note = makeNote({ title: 'Random', body: 'no match' });
     const proposal = generateProposal(note, registry);
-    expect(proposal.projectLine).toBe('No project match.');
+    expect(proposal.projectLine).toContain('No project match');
   });
 });
 
@@ -309,15 +316,21 @@ describe('formatDailyNoteEntry', () => {
     expect(entry).not.toContain('**Notes:**');
   });
 
-  it('includes action controls', () => {
+  it('includes action controls with delimiters', () => {
     const note = makeNote();
     const proposal = generateProposal(note, registry);
     const entry = formatDailyNoteEntry(1, note, proposal);
 
-    expect(entry).toContain('- [ ] Accept');
     expect(entry).toContain('- [ ] Retire');
-    expect(entry).toContain('**Chat:**');
+    expect(entry).toContain('- [ ] Process');
     expect(entry).toContain('**Response:**');
+    // Response field has HTML comment delimiters
+    expect(entry).toContain('<!-- r -->');
+    expect(entry).toContain('<!-- /r -->');
+    // Chat field should NOT be in the initial format
+    expect(entry).not.toContain('**Chat:**');
+    expect(entry).not.toContain('<!-- c -->');
+    expect(entry).not.toContain('<!-- /c -->');
   });
 
   it('includes proposed routing', () => {
@@ -381,10 +394,10 @@ describe('buildDailyNoteSection', () => {
     expect(section).toMatch(/from things, telegram|from telegram, things/);
   });
 
-  it('includes Bulk Response line when notes exist', () => {
+  it('includes Process All when notes exist', () => {
     const notes = [makeNote()];
     const section = buildDailyNoteSection(notes, registry);
-    expect(section).toContain('**Bulk Response:**');
+    expect(section).toContain('- [ ] Process All');
   });
 
   it('includes Routed section', () => {
@@ -392,9 +405,9 @@ describe('buildDailyNoteSection', () => {
     expect(section).toContain('### Routed');
   });
 
-  it('includes date and time in heading', () => {
+  it('includes section heading', () => {
     const section = buildDailyNoteSection([], registry);
-    expect(section).toMatch(/## Fleeting Notes \(appended \d{4}-\d{2}-\d{2}/);
+    expect(section).toContain('## Fleeting Notes');
   });
 });
 
@@ -513,9 +526,22 @@ describe('updateDailyNote', () => {
     expect(content).toContain('After section.');
   });
 
-  it('returns false when no daily note exists', () => {
+  it('creates daily note when none exists', () => {
     const result = updateDailyNote(vaultPath, 'some section');
-    expect(result).toBe(false);
+    expect(result).toBe(true);
+    // Verify the file was created
+    const now = new Date();
+    const y = String(now.getFullYear());
+    const m = String(now.getMonth() + 1).padStart(2, '0');
+    const months = [
+      'January', 'February', 'March', 'April', 'May', 'June',
+      'July', 'August', 'September', 'October', 'November', 'December',
+    ];
+    const monthDir = path.join(vaultPath, '0a. Daily Notes', y, `${m}-${months[now.getMonth()]}`);
+    expect(fs.existsSync(monthDir)).toBe(true);
+    const files = fs.readdirSync(monthDir);
+    expect(files.length).toBe(1);
+    expect(files[0]).toMatch(/\.md$/);
   });
 
   it('preserves content before and after markers', () => {

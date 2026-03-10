@@ -7,6 +7,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import {
   buildFleetingNoteContent,
+  convertDollarTags,
   findExistingUuids,
   fleetingNotePath,
   ingestThingsToday,
@@ -37,12 +38,13 @@ function createThingsDb(items: Array<Record<string, unknown>>): string {
       status INTEGER DEFAULT 0,
       trashed INTEGER DEFAULT 0,
       todayIndex INTEGER,
+      start INTEGER DEFAULT 0,
       project TEXT,
       heading TEXT
     )
   `);
   const insertWithToday = db.prepare(
-    'INSERT INTO TMTask (uuid, title, notes, creationDate, type, status, trashed, todayIndex) VALUES (?, ?, ?, ?, 0, 0, 0, ?)',
+    'INSERT INTO TMTask (uuid, title, notes, creationDate, type, status, trashed, todayIndex, start) VALUES (?, ?, ?, ?, 0, 0, 0, ?, 1)',
   );
   const insertWithoutToday = db.prepare(
     'INSERT INTO TMTask (uuid, title, notes, creationDate, type, status, trashed) VALUES (?, ?, ?, ?, 0, 0, 0)',
@@ -140,13 +142,33 @@ describe('fleetingNotePath', () => {
   it('generates correct path structure', () => {
     const date = new Date(2026, 2, 7); // March 7, 2026
     expect(fleetingNotePath(date, 'pedro-reply')).toBe(
-      'Fleeting/2026/03/07/pedro-reply.md',
+      'Fleeting/2026/03-March/07-pedro-reply.md',
     );
   });
 
   it('pads month and day', () => {
     const date = new Date(2026, 0, 5); // Jan 5
-    expect(fleetingNotePath(date, 'test')).toBe('Fleeting/2026/01/05/test.md');
+    expect(fleetingNotePath(date, 'test')).toBe(
+      'Fleeting/2026/01-January/05-test.md',
+    );
+  });
+});
+
+describe('convertDollarTags', () => {
+  it('converts $tag to #tag', () => {
+    expect(convertDollarTags('Buy milk $task')).toBe('Buy milk #task');
+  });
+
+  it('converts multiple tags', () => {
+    expect(convertDollarTags('$task $spark idea')).toBe('#task #spark idea');
+  });
+
+  it('leaves text without $ unchanged', () => {
+    expect(convertDollarTags('No tags here')).toBe('No tags here');
+  });
+
+  it('does not convert $ not followed by word char', () => {
+    expect(convertDollarTags('Price is $5.00')).toBe('Price is $5.00');
   });
 });
 

@@ -213,23 +213,40 @@ Each active project gets a `todos.md` with:
 - Manually appended to-do items using the standard append format
 - Links to project notes via `[[...|*]]`
 
-### AI Pre-Processing (future)
+### AI Pre-Processing (partially implemented)
 
-When converting fleeting notes into project notes, an AI pre-processing step should:
-- Check the relevant repo for what's already implemented
-- Assess scope and feasibility
+**Implemented:** LLM-generated routing proposals at ingestion time — `claude -p` analyzes note content against the project registry and proposes project + conversion path when heuristics fail.
+
+**Future:**
+- Check the relevant repo for what's already implemented before proposing routing
+- Assess scope and feasibility of action items
 - Surface related existing work, specs, or proposals
 - Turn raw captures into grounded, actionable project notes rather than aspirational to-dos
 - For URL-bearing fleeting notes: fetch article text, draft a literature note with "My reading" section for user confirmation
 
-### Routing Agent (future)
+### Routing Agent (implemented — Phase 1)
 
-A dedicated agent that handles fleeting note routing. It:
-- Has its own explicit goals file (what routing decisions to optimize for, how to prioritize)
-- Proposes routing decisions (project note, permanent note, literature note, retire) — does not execute without user confirmation
-- Reads the project registry, existing project notes, and permanent notes to inform proposals
-- Could incorporate the AI pre-processing step (check repos, assess feasibility) as part of its routing proposal
-- Operates on its own cadence (e.g. when new fleeting notes arrive)
+LLM-assisted routing via `claude -p` CLI. Two integration points:
+
+**1. Proposal generation (at ingestion time):**
+- Heuristic rules run first (URL → literature, action verb + project → #task, test/stale → retire, etc.)
+- When heuristics can't match a project or determine a conversion path, `claude -p` is called with the note content and full project registry
+- The LLM returns `{project, type, description}` — used to build the proposal line in the daily note
+- Falls back to a generic "unmatched" proposal if the LLM call fails
+- Implementation: `generateProposal()` in `daily-note.ts` calls `generateLLMProposal()` from `agent-route.ts`
+
+**2. Response interpretation (at routing time):**
+- When the user writes in the Response field and clicks Process, the text is **always** sent to `claude -p` — no deterministic keyword matching
+- The LLM receives: note context, proposal text, response text, chat history (from fleeting note `## Chat`), and full project registry
+- The LLM returns either `{action:"route", type, project}` or `{action:"reply", message}`
+- Route → executes routing; Reply → appends conversation to fleeting note `## Chat` section, unchecks Process
+- Rationale: keyword matching was too greedy (e.g. "note" in casual text triggered routing). The LLM provides better judgment for all cases.
+- Implementation: `interpretResponse()` in `agent-route.ts`, called from `executeRoute()` in `route.ts`
+
+**Future phases:**
+- Container-based agent with persistent memory and repo awareness
+- AI pre-processing (check repos, assess scope) before proposing routing
+- Semantic search for connection proposals between permanent notes
 
 ### Image Ingestion (future)
 

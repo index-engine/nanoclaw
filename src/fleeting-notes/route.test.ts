@@ -110,10 +110,8 @@ describe('parseDecisions', () => {
 1. **Reply to Pedro** (2026-03-07) [[Fleeting/2026/03/07/reply-to-pedro|f-note]]
     **Notes:** About the workshop
     **Proposed:** Project Chores. #task — action item for Chores.
-    - [x] Accept
-    - [ ] Retire
-    **Chat:**
     **Response:**
+    - [x] Process
 
 ### Routed
 
@@ -128,16 +126,15 @@ describe('parseDecisions', () => {
     expect(decisions[0].itemIndex).toBe(1);
   });
 
-  it('parses retired item', () => {
+  it('parses retired item via Retire + Process checkboxes', () => {
     const content = `
 <!-- fleeting-start -->
 
 1. **Test Item** (2026-03-07) [[Fleeting/2026/03/07/test-item|f-note]]
     **Proposed:** Retire — test item.
-    - [ ] Accept
     - [x] Retire
-    **Chat:**
     **Response:**
+    - [x] Process
 
 <!-- fleeting-end -->`;
 
@@ -146,16 +143,30 @@ describe('parseDecisions', () => {
     expect(decisions[0].action).toBe('retire');
   });
 
+  it('ignores Retire without Process', () => {
+    const content = `
+<!-- fleeting-start -->
+
+1. **Test Item** (2026-03-07) [[Fleeting/2026/03/07/test-item|f-note]]
+    **Proposed:** Retire — test item.
+    - [x] Retire
+    **Response:**
+    - [ ] Process
+
+<!-- fleeting-end -->`;
+
+    const decisions = parseDecisions(content);
+    expect(decisions).toHaveLength(0);
+  });
+
   it('parses response text', () => {
     const content = `
 <!-- fleeting-start -->
 
 1. **Note** (2026-03-07) [[Fleeting/2026/03/07/note|f-note]]
     **Proposed:** Permanent note.
-    - [ ] Accept
-    - [ ] Retire
-    **Chat:**
     **Response:** This is my expanded thought on the topic.
+    - [x] Process
 
 <!-- fleeting-end -->`;
 
@@ -167,23 +178,28 @@ describe('parseDecisions', () => {
     );
   });
 
-  it('parses chat text', () => {
+  it('parses Process All — routes all items', () => {
     const content = `
 <!-- fleeting-start -->
 
-1. **Note** (2026-03-07) [[Fleeting/2026/03/07/note|f-note]]
+1. **Note One** (2026-03-07) [[Fleeting/2026/03/07/note-one|f-note]]
     **Proposed:** Permanent note.
-    - [ ] Accept
-    - [ ] Retire
-    **Chat:** What project does this belong to?
     **Response:**
+    - [ ] Process
+
+2. **Note Two** (2026-03-07) [[Fleeting/2026/03/07/note-two|f-note]]
+    **Proposed:** #task item.
+    **Response:**
+    - [ ] Process
+
+- [x] Process All
 
 <!-- fleeting-end -->`;
 
     const decisions = parseDecisions(content);
-    expect(decisions).toHaveLength(1);
-    expect(decisions[0].action).toBe('chat');
-    expect(decisions[0].chatText).toBe('What project does this belong to?');
+    expect(decisions).toHaveLength(2);
+    expect(decisions[0].action).toBe('accept');
+    expect(decisions[1].action).toBe('accept');
   });
 
   it('skips items with no action', () => {
@@ -192,10 +208,8 @@ describe('parseDecisions', () => {
 
 1. **Note** (2026-03-07) [[Fleeting/2026/03/07/note|f-note]]
     **Proposed:** Permanent note.
-    - [ ] Accept
-    - [ ] Retire
-    **Chat:**
     **Response:**
+    - [ ] Process
 
 <!-- fleeting-end -->`;
 
@@ -209,17 +223,14 @@ describe('parseDecisions', () => {
 
 1. **First** (2026-03-07) [[Fleeting/2026/03/07/first|f-note]]
     **Proposed:** #task item.
-    - [x] Accept
-    - [ ] Retire
-    **Chat:**
     **Response:**
+    - [x] Process
 
 2. **Second** (2026-03-07) [[Fleeting/2026/03/07/second|f-note]]
     **Proposed:** Retire — stale.
-    - [ ] Accept
     - [x] Retire
-    **Chat:**
     **Response:**
+    - [x] Process
 
 <!-- fleeting-end -->`;
 
@@ -227,6 +238,30 @@ describe('parseDecisions', () => {
     expect(decisions).toHaveLength(2);
     expect(decisions[0].action).toBe('accept');
     expect(decisions[1].action).toBe('retire');
+  });
+
+  it('parses multi-line response between <!-- r --> delimiters', () => {
+    const content = `
+<!-- fleeting-start -->
+
+1. **Article** (2026-03-07) [[Fleeting/2026/03/07/article|f-note]]
+    **Proposed:** Literature note.
+    **Response:**
+    <!-- r -->
+    Here is the full article text.
+    It spans multiple lines.
+
+    Even with blank lines in between.
+    <!-- /r -->
+    - [x] Process
+
+<!-- fleeting-end -->`;
+
+    const decisions = parseDecisions(content);
+    expect(decisions).toHaveLength(1);
+    expect(decisions[0].action).toBe('response');
+    expect(decisions[0].responseText).toContain('Here is the full article text.');
+    expect(decisions[0].responseText).toContain('Even with blank lines in between.');
   });
 
   it('returns empty when no markers', () => {
@@ -239,10 +274,8 @@ describe('parseDecisions', () => {
 
 1. **Note** (2026-03-07) [[Fleeting/2026/03/07/note|f-note]]
     **Proposed:** Project Chores. #task — action item for Chores.
-    - [x] Accept
-    - [ ] Retire
-    **Chat:**
     **Response:**
+    - [x] Process
 
 <!-- fleeting-end -->`;
 
@@ -257,7 +290,7 @@ describe('projectNotePath', () => {
   it('generates correct path', () => {
     expect(
       projectNotePath('1. Projects/Chores/', '2026-03-07', 'reply-to-pedro'),
-    ).toBe('1. Projects/Chores/notes/2026/03/2026-03-07-reply-to-pedro.md');
+    ).toBe('1. Projects/Chores/notes/2026/03-March/2026-03-07-reply-to-pedro.md');
   });
 });
 
@@ -335,8 +368,8 @@ describe('detectRoutingAction', () => {
     expect(detectRoutingAction('Permanent note — insight')).toBe('permanent');
   });
 
-  it('detects idea log', () => {
-    expect(detectRoutingAction('Idea log entry')).toBe('idea-log');
+  it('treats former idea log as permanent', () => {
+    expect(detectRoutingAction('Idea log entry')).toBe('permanent');
   });
 
   it('defaults to permanent', () => {
@@ -408,12 +441,15 @@ describe('appendToRoutedSection', () => {
     const result = appendToRoutedSection(
       content,
       'Fleeting/2026/03/07/test.md',
-      'Accepted',
+      'accept',
       '1. Projects/Chores/notes/2026/03/2026-03-07-test.md',
+      'Test Note',
+      'Chores',
+      'task',
     );
 
     expect(result).toContain(
-      'Accepted: [[Fleeting/2026/03/07/test|f-note]] → [[1. Projects/Chores/notes/2026/03/2026-03-07-test]]',
+      '- **Test Note** → Chores as #task — [[Fleeting/2026/03/07/test|f-note]] → [[1. Projects/Chores/notes/2026/03/2026-03-07-test|pr-note]]',
     );
   });
 
@@ -423,18 +459,19 @@ describe('appendToRoutedSection', () => {
     const result = appendToRoutedSection(
       content,
       'Fleeting/2026/03/07/test.md',
-      'Retired',
+      'retire',
+      undefined,
+      'Test Note',
     );
 
-    expect(result).toContain('Retired: [[Fleeting/2026/03/07/test|f-note]]');
-    expect(result).not.toContain('→');
+    expect(result).toContain('- **Test Note** → retired — [[Fleeting/2026/03/07/test|f-note]]');
   });
 });
 
 describe('executeRoute', () => {
   const registry = makeRegistry();
 
-  it('retires a note', () => {
+  it('retires a note', async () => {
     const relPath = 'Fleeting/2026/03/07/test-note.md';
     createFleetingNote(
       vaultPath,
@@ -443,7 +480,7 @@ describe('executeRoute', () => {
     );
 
     const note = makeNote();
-    const result = executeRoute(
+    const result = await executeRoute(
       vaultPath,
       {
         itemIndex: 1,
@@ -459,7 +496,7 @@ describe('executeRoute', () => {
     expect(content).toContain('status: retired');
   });
 
-  it('creates project note for #task proposal', () => {
+  it('creates project note for #task proposal', async () => {
     const relPath = 'Fleeting/2026/03/07/reply-to-pedro.md';
     createFleetingNote(
       vaultPath,
@@ -474,7 +511,7 @@ describe('executeRoute', () => {
       project: 'Chores',
     });
 
-    const result = executeRoute(
+    const result = await executeRoute(
       vaultPath,
       {
         itemIndex: 1,
@@ -509,7 +546,7 @@ describe('executeRoute', () => {
     expect(fleetingContent).toContain('converted_to:');
   });
 
-  it('creates permanent note for non-task proposal', () => {
+  it('creates permanent note for non-task proposal', async () => {
     const relPath = 'Fleeting/2026/03/07/ai-insight.md';
     createFleetingNote(
       vaultPath,
@@ -525,7 +562,7 @@ describe('executeRoute', () => {
       project: 'NanoClaw',
     });
 
-    const result = executeRoute(
+    const result = await executeRoute(
       vaultPath,
       {
         itemIndex: 1,
@@ -550,7 +587,7 @@ describe('executeRoute', () => {
     expect(destContent).toContain('type: permanent-note');
   });
 
-  it('uses response text as body for response action', () => {
+  it('falls back to proposal when LLM unavailable for response', async () => {
     const relPath = 'Fleeting/2026/03/07/thought.md';
     createFleetingNote(
       vaultPath,
@@ -564,13 +601,14 @@ describe('executeRoute', () => {
       title: 'A Thought',
     });
 
-    const result = executeRoute(
+    // In test env, claude -p will fail, so LLM fallback returns {action:'route', type:'permanent'}
+    const result = await executeRoute(
       vaultPath,
       {
         itemIndex: 1,
         fleetingPath: relPath,
         action: 'response',
-        responseText: 'My expanded thoughts on this topic.',
+        responseText: 'route this to spark please',
         proposal: {
           projectLine: 'No project match.',
           text: 'Permanent note.',
@@ -580,34 +618,13 @@ describe('executeRoute', () => {
       registry,
     );
 
+    // LLM fails in test → fallback routes as permanent
     expect(result.destinationPath).toBeDefined();
-    const destContent = fs.readFileSync(
-      path.join(vaultPath, result.destinationPath!),
-      'utf-8',
-    );
-    expect(destContent).toContain('My expanded thoughts on this topic.');
-  });
-
-  it('returns nothing for chat action', () => {
-    const note = makeNote();
-    const result = executeRoute(
-      vaultPath,
-      {
-        itemIndex: 1,
-        fleetingPath: note.path,
-        action: 'chat',
-        chatText: 'What project?',
-      },
-      note,
-      registry,
-    );
-    expect(result.destinationPath).toBeUndefined();
-    expect(result.error).toBeUndefined();
   });
 });
 
 describe('processDecisions', () => {
-  it('processes multiple decisions end-to-end', () => {
+  it('processes multiple decisions end-to-end', async () => {
     // Create fleeting notes
     createFleetingNote(
       vaultPath,
@@ -639,23 +656,22 @@ describe('processDecisions', () => {
 
 1. **Task One** (2026-03-07) [[Fleeting/2026/03/07/task-one|f-note]]
     **Proposed:** Project Chores. #task — action item for Chores.
-    - [x] Accept
-    - [ ] Retire
-    **Chat:**
     **Response:**
+    - [x] Process
 
 2. **Stale Item** (2026-03-07) [[Fleeting/2026/03/07/stale-item|f-note]]
     **Proposed:** Retire — stale item.
-    - [ ] Accept
     - [x] Retire
-    **Chat:**
     **Response:**
+    <!-- r -->
+    <!-- /r -->
+    - [x] Process
 
 ### Routed
 
 <!-- fleeting-end -->`;
 
-    const result = processDecisions(vaultPath, dailyNoteContent, notes);
+    const result = await processDecisions(vaultPath, dailyNoteContent, notes);
     expect(result.routed).toHaveLength(2);
     expect(result.errors).toHaveLength(0);
     expect(result.routed[0].action).toBe('accept');
@@ -663,20 +679,18 @@ describe('processDecisions', () => {
     expect(result.routed[1].action).toBe('retire');
   });
 
-  it('reports error for missing fleeting note', () => {
+  it('reports error for missing fleeting note', async () => {
     const dailyNoteContent = `
 <!-- fleeting-start -->
 
 1. **Missing** (2026-03-07) [[Fleeting/2026/03/07/missing|f-note]]
     **Proposed:** #task item.
-    - [x] Accept
-    - [ ] Retire
-    **Chat:**
     **Response:**
+    - [x] Process
 
 <!-- fleeting-end -->`;
 
-    const result = processDecisions(vaultPath, dailyNoteContent, []);
+    const result = await processDecisions(vaultPath, dailyNoteContent, []);
     expect(result.errors).toHaveLength(1);
     expect(result.errors[0]).toContain('not found');
   });

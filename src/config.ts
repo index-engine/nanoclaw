@@ -31,6 +31,7 @@ export const SCHEDULER_POLL_INTERVAL = 60000;
 // Absolute paths needed for container mounts
 const PROJECT_ROOT = process.cwd();
 const HOME_DIR = process.env.HOME || os.homedir();
+const expandHome = (p: string) => p.startsWith('~/') ? path.join(HOME_DIR, p.slice(2)) : p;
 
 // Mount security: allowlist stored OUTSIDE project root, never mounted into containers
 export const MOUNT_ALLOWLIST_PATH = path.join(
@@ -90,14 +91,17 @@ export const THINGS_SYNC_INTERVAL = parseInt(
     '3600000',
   10,
 );
-export const THINGS_DB_PATH =
+export const THINGS_DB_PATH = expandHome(
   process.env.THINGS_DB_PATH ||
   envConfig.THINGS_DB_PATH ||
-  '~/Library/Group Containers/JLMPQHK86H.com.culturedcode.ThingsMac/ThingsData-YN4YZ/Things Database.thingsdatabase/main.sqlite';
-export const EXOCORTEX_PATH =
-  process.env.EXOCORTEX_PATH || envConfig.EXOCORTEX_PATH || '';
-export const OBSIDIAN_VAULT_PATH =
-  process.env.OBSIDIAN_VAULT_PATH || envConfig.OBSIDIAN_VAULT_PATH || '';
+  '~/Library/Group Containers/JLMPQHK86H.com.culturedcode.ThingsMac/ThingsData-YN4YZ/Things Database.thingsdatabase/main.sqlite',
+);
+export const EXOCORTEX_PATH = expandHome(
+  process.env.EXOCORTEX_PATH || envConfig.EXOCORTEX_PATH || '',
+);
+export const OBSIDIAN_VAULT_PATH = expandHome(
+  process.env.OBSIDIAN_VAULT_PATH || envConfig.OBSIDIAN_VAULT_PATH || '',
+);
 export const OBSIDIAN_SYNC_INTERVAL = parseInt(
   process.env.OBSIDIAN_SYNC_INTERVAL ||
     envConfig.OBSIDIAN_SYNC_INTERVAL ||

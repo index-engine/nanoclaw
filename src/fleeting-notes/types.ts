@@ -34,9 +34,8 @@ export interface RoutingProposal {
 export interface UserDecision {
   itemIndex: number;
   fleetingPath: string;
-  action: 'accept' | 'retire' | 'response' | 'chat' | 'skip';
+  action: 'accept' | 'retire' | 'response' | 'skip';
   responseText?: string;
-  chatText?: string;
   proposal?: RoutingProposal;
 }
 
@@ -60,7 +59,10 @@ export interface RoutingResult {
   routed: Array<{
     fleetingPath: string;
     action: string;
+    routingType?: string;
     destinationPath?: string;
+    title?: string;
+    projectName?: string;
   }>;
   errors: string[];
 }

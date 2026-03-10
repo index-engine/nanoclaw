@@ -41,12 +41,23 @@ function formatDate(d: Date): string {
   return `${y}-${m}-${day}`;
 }
 
+const MONTH_NAMES = [
+  'January', 'February', 'March', 'April', 'May', 'June',
+  'July', 'August', 'September', 'October', 'November', 'December',
+];
+
 /** Build the vault-relative path for a fleeting note. */
 export function fleetingNotePath(created: Date, slug: string): string {
   const y = String(created.getFullYear());
   const m = String(created.getMonth() + 1).padStart(2, '0');
+  const monthName = MONTH_NAMES[created.getMonth()];
   const d = String(created.getDate()).padStart(2, '0');
-  return `Fleeting/${y}/${m}/${d}/${slug}.md`;
+  return `Fleeting/${y}/${m}-${monthName}/${d}-${slug}.md`;
+}
+
+/** Convert `$` hashtag shorthand to `#` (avoids extra tap on iPhone keyboard). */
+export function convertDollarTags(text: string): string {
+  return text.replace(/\$([a-zA-Z]\w*)/g, '#$1');
 }
 
 /** Build frontmatter + body for a fleeting note file. */
@@ -87,14 +98,16 @@ export function readThingsToday(thingsDbPath: string): ThingsItem[] {
   }
 
   try {
-    // Things Today: todayIndex is not null, status=0 (incomplete), not trashed
+    // Things Today: start=1 (Today) or start=2 (Evening), incomplete, not trashed
+    // Using `start` column instead of `todayIndex` — todayIndex persists on items
+    // that were once in Today even after completion/rescheduling.
     const query = `
       SELECT uuid, title, notes, creationDate
       FROM TMTask
       WHERE type = 0
         AND status = 0
         AND trashed = 0
-        AND todayIndex IS NOT NULL
+        AND start IN (1, 2)
     `;
     return db.prepare(query).all() as ThingsItem[];
   } finally {
@@ -135,7 +148,8 @@ export function markThingsCompleted(
   authToken: string,
 ): Promise<void> {
   return new Promise((resolve, reject) => {
-    const cmd = `THINGS_AUTH_TOKEN=${authToken} things update --id ${uuid} --completed`;
+    const thingsBin = process.env.THINGS_CLI_PATH || '/opt/homebrew/bin/things';
+    const cmd = `THINGS_AUTH_TOKEN=${authToken} ${thingsBin} update --id ${uuid} --completed`;
     exec(cmd, (err) => {
       if (err) reject(err);
       else resolve();
@@ -184,7 +198,11 @@ export async function ingestThingsToday(
       continue;
     }
 
-    const slug = slugify(item.title);
+    // Convert $tag shorthand to #tag before any processing
+    const title = convertDollarTags(item.title);
+    const body = convertDollarTags(item.notes || '');
+
+    const slug = slugify(title);
     if (!slug) {
       result.skipped.push(item.uuid);
       continue;
@@ -207,12 +225,12 @@ export async function ingestThingsToday(
     }
 
     // Detect project from content
-    const project = detectProject(registry, item.title, item.notes || '');
+    const project = detectProject(registry, title, body);
 
     // Write fleeting note
     const content = buildFleetingNoteContent(
-      item.title,
-      item.notes || '',
+      title,
+      body,
       createdStr,
       item.uuid,
       project?.name,
@@ -222,8 +240,8 @@ export async function ingestThingsToday(
     const note: FleetingNote = {
       path: notePath,
       slug,
-      title: item.title.trim(),
-      body: (item.notes || '').trim(),
+      title: title.trim(),
+      body: body.trim(),
       source: 'things',
       thingsUuid: item.uuid,
       created: createdStr,

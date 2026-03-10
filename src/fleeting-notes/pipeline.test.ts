@@ -43,12 +43,13 @@ function createThingsDb(
       status INTEGER DEFAULT 0,
       trashed INTEGER DEFAULT 0,
       todayIndex INTEGER,
+      start INTEGER DEFAULT 0,
       project TEXT,
       heading TEXT
     )
   `);
   const insertWithToday = db.prepare(
-    'INSERT INTO TMTask (uuid, title, notes, creationDate, type, status, trashed, todayIndex) VALUES (?, ?, ?, ?, 0, 0, 0, ?)',
+    'INSERT INTO TMTask (uuid, title, notes, creationDate, type, status, trashed, todayIndex, start) VALUES (?, ?, ?, ?, 0, 0, 0, ?, 1)',
   );
   const insertWithoutToday = db.prepare(
     'INSERT INTO TMTask (uuid, title, notes, creationDate, type, status, trashed) VALUES (?, ?, ?, ?, 0, 0, 0)',
@@ -154,21 +155,21 @@ describe('end-to-end pipeline', () => {
         uuid: 'pedro-uuid',
         title: 'Reply to Pedro',
         notes: 'About the workshop next week',
-        creationDate: 1772604800, // ~2026-03-02
+        creationDate: Math.floor(Date.now() / 1000), // ~2026-03-02
         todayIndex: 0,
       },
       {
         uuid: 'insurance-uuid',
         title: 'Resubmit insurance claim',
         notes: '',
-        creationDate: 1772604800,
+        creationDate: Math.floor(Date.now() / 1000),
         todayIndex: 1,
       },
       {
         uuid: 'claw-uuid',
         title: '@nanoclaw fix the sync',
         notes: 'The fleeting notes pipeline has a bug',
-        creationDate: 1772604800,
+        creationDate: Math.floor(Date.now() / 1000),
         todayIndex: 2,
       },
     ]);
@@ -232,7 +233,7 @@ describe('end-to-end pipeline', () => {
       {
         uuid: 'u1',
         title: 'Test item',
-        creationDate: 1772604800,
+        creationDate: Math.floor(Date.now() / 1000),
         todayIndex: 0,
       },
     ]);
@@ -261,20 +262,20 @@ describe('end-to-end pipeline', () => {
     expect(result.dailyNoteUpdated).toBe(true);
   });
 
-  it('handles missing daily note gracefully', async () => {
+  it('creates daily note when none exists', async () => {
     thingsDbPath = createThingsDb([
       {
         uuid: 'u1',
         title: 'Test',
-        creationDate: 1772604800,
+        creationDate: Math.floor(Date.now() / 1000),
         todayIndex: 0,
       },
     ]);
-    // No daily note created
+    // No daily note created — pipeline should create one
 
     const result = await runPipeline(vaultPath, thingsDbPath, 'token');
     expect(result.ingest.created).toHaveLength(1);
-    expect(result.dailyNoteUpdated).toBe(false);
+    expect(result.dailyNoteUpdated).toBe(true);
   });
 
   it('full cycle: ingest → daily note → simulate accept → route → verify', async () => {
@@ -284,7 +285,7 @@ describe('end-to-end pipeline', () => {
         uuid: 'pedro-uuid',
         title: 'Reply to Pedro',
         notes: 'Workshop follow-up',
-        creationDate: 1772604800,
+        creationDate: Math.floor(Date.now() / 1000),
         todayIndex: 0,
       },
     ]);
@@ -301,9 +302,8 @@ describe('end-to-end pipeline', () => {
     let dailyContent = fs.readFileSync(dailyNotePath, 'utf-8');
     expect(dailyContent).toContain('**Reply to Pedro**');
 
-    // Stage 3: Simulate user accepting the item
-    // Replace "- [ ] Accept" with "- [x] Accept"
-    dailyContent = dailyContent.replace('- [ ] Accept', '- [x] Accept');
+    // Stage 3: Simulate user processing the item (check first non-All Process)
+    dailyContent = dailyContent.replace('- [ ] Process\n', '- [x] Process\n');
     fs.writeFileSync(dailyNotePath, dailyContent);
 
     // Parse and process decisions
@@ -311,7 +311,7 @@ describe('end-to-end pipeline', () => {
     expect(notes).toHaveLength(1);
     expect(notes[0].title).toBe('Reply to Pedro');
 
-    const routingResult = processDecisions(
+    const routingResult = await processDecisions(
       vaultPath,
       dailyContent,
       notes,
@@ -353,7 +353,7 @@ describe('end-to-end pipeline', () => {
         uuid: 'test-uuid',
         title: 'test',
         notes: '',
-        creationDate: 1772604800,
+        creationDate: Math.floor(Date.now() / 1000),
         todayIndex: 0,
       },
     ]);
@@ -361,13 +361,14 @@ describe('end-to-end pipeline', () => {
 
     await runPipeline(vaultPath, thingsDbPath, 'test-token');
 
-    // Simulate user retiring the item
+    // Simulate user retiring the item via Retire + Process checkboxes
     let dailyContent = fs.readFileSync(dailyNotePath, 'utf-8');
     dailyContent = dailyContent.replace('- [ ] Retire', '- [x] Retire');
+    dailyContent = dailyContent.replace('- [ ] Process', '- [x] Process');
     fs.writeFileSync(dailyNotePath, dailyContent);
 
     const notes = collectUnprocessedNotes(vaultPath);
-    const routingResult = processDecisions(vaultPath, dailyContent, notes);
+    const routingResult = await processDecisions(vaultPath, dailyContent, notes);
 
     expect(routingResult.routed).toHaveLength(1);
     expect(routingResult.routed[0].action).toBe('retire');
@@ -385,7 +386,7 @@ describe('end-to-end pipeline', () => {
         uuid: 'u1',
         title: 'Reply to Pedro',
         notes: '',
-        creationDate: 1772604800,
+        creationDate: Math.floor(Date.now() / 1000),
         todayIndex: 0,
       },
       // URL → literature note
@@ -393,7 +394,7 @@ describe('end-to-end pipeline', () => {
         uuid: 'u2',
         title: 'Read this article',
         notes: 'https://example.com/interesting',
-        creationDate: 1772604800,
+        creationDate: Math.floor(Date.now() / 1000),
         todayIndex: 1,
       },
       // Non-action with project → permanent note
@@ -401,7 +402,7 @@ describe('end-to-end pipeline', () => {
         uuid: 'u3',
         title: '@nanoclaw observation about caching',
         notes: 'The cache invalidation strategy seems suboptimal for large vaults.',
-        creationDate: 1772604800,
+        creationDate: Math.floor(Date.now() / 1000),
         todayIndex: 2,
       },
     ]);

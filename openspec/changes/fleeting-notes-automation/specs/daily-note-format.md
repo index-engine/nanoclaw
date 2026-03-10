@@ -5,25 +5,25 @@ This file defines the format for fleeting notes sections in daily notes.
 ## Structure
 
 ```markdown
-## Fleeting Notes (appended {YYYY-MM-DD} ~{HH:MM} {TZ})
+## Fleeting Notes
 
 ### Unprocessed ({count} from {source})
 
 1. **{Item title}** ({YYYY-MM-DD}) [[Fleeting/{year}/{month}/{day}/{slug}|f-note]]
-   **Notes:** {verbatim text, if short}
-   **Summary:** {AI summary in 2 lines, if long}
-   **Chat summary:** {summary of prior chat exchanges, if any}
-   **Proposed:** {AI routing proposal}
-   - [ ] Accept
-   - [ ] Retire
-   **Chat:**
-   **Response:**
+    **Notes:** {verbatim text, if short}
+    **Proposed:** {AI routing proposal}
+    **Chat:** {one-line summary of prior agent conversation, if any}
+    - [ ] Retire
+    **Response:**
+    <!-- r -->
+    <!-- /r -->
+    - [ ] Process
 
-**Bulk Response:**
+- [ ] Process All
 
 ### Routed
 
-- **{Item title}** → {description} — [[...|f-note]] → [[...|pr-note]] → [[...|todos]]
+- **{title}** → {description} — [[...|f-note]] → [[...|pr-note]]
 ```
 
 ## Rules
@@ -42,7 +42,23 @@ This file defines the format for fleeting notes sections in daily notes.
 
 ### Routing proposal generation
 
-Every unprocessed item MUST have a real routing proposal when it appears in the daily note. This is the AI's job at ingestion time — not a deferred step.
+Every unprocessed item MUST have a real routing proposal when it appears in the daily note. Proposals are generated at ingestion time using a two-tier system:
+
+**Tier 1 — Heuristics (fast, deterministic):**
+- `@tag` in title/body → match against project registry routing rules
+- URL present → literature note
+- Action verb + matched project → #task
+- Test/stale + short → retire
+- Matched project but no action → permanent note
+
+**Tier 2 — LLM via `claude -p` (when heuristics fail):**
+- Called when heuristics can't match a project or determine a conversion path
+- Receives: note title, body, created date, full project registry (names, aliases, routing keywords)
+- Returns: `{project, type, description}` as JSON
+- The LLM sees all projects and can match based on semantic understanding (e.g. "Venus note" → Venus Mars project)
+- Falls back to a generic "unmatched" proposal if the LLM call fails or times out (30s)
+
+Implementation: `generateProposal()` in `daily-note.ts` → `generateHeuristicProposal()` → if null, `generateLLMProposal()` from `agent-route.ts`
 
 ```gherkin
 Feature: AI routing proposal generation
@@ -54,9 +70,28 @@ Feature: AI routing proposal generation
     Then the **Proposed:** field MUST contain a concrete routing proposal
     And the proposal MUST NOT be deferred (e.g. "pending", "TBD")
 
+  Scenario: Heuristic matching succeeds
+    Given a fleeting note with content matching a routing rule or keyword pattern
+    When the heuristic proposal generator runs
+    Then it returns a proposal immediately (no LLM call)
+    And the proposal includes the matched project and conversion path
+
+  Scenario: Heuristic matching fails — LLM fallback
+    Given a fleeting note with no @tags, no URL, no action verbs, and no matched project
+    When the heuristic proposal generator returns null
+    Then `claude -p` is called with the note content and full project registry
+    And the LLM returns a project match and conversion path
+    And the proposal is built from the LLM response
+
+  Scenario: LLM call fails — ultimate fallback
+    Given the LLM call times out or returns unparseable output
+    When the proposal generator handles the error
+    Then a generic "No project match. Permanent note — unmatched idea, awaiting triage." proposal is used
+    And the note still appears in the daily note (never dropped)
+
   Scenario: Matching to a registered project
     Given a fleeting note with content
-    When the agent generates a routing proposal
+    When the agent generates a routing proposal (heuristic or LLM)
     Then the agent MUST consult the project registry (aliases, routing tags, descriptions)
     And if a project matches, state it explicitly: "Project {name}."
     And if no project matches, state: "No project match."
@@ -92,81 +127,129 @@ Feature: AI routing proposal generation
 
 ### Per-item action controls
 
-After **Proposed:**, each item has two inline checkboxes and an individual response area:
+Each item has a Retire checkbox, a unified Response field, and a Process button:
 
 ```markdown
-   - [ ] Accept
-   - [ ] Retire
-   **Response:**
+    - [ ] Retire
+    **Response:**
+    <!-- r -->
+    {user text here — routing instructions, questions, or conversation}
+    <!-- /r -->
+    - [ ] Process
 ```
 
-- **Accept** — checking this tells the agent to execute the proposal as-is. No further input needed.
-- **Retire** — checking this tells the agent to retire the note (mark as retired, no downstream notes created).
-- **Response:** — free-text area for the user to give custom routing instructions for this specific item. Overrides both checkboxes if filled in. Used when the user wants something different from the proposal (e.g. route to a different project, create a permanent note instead, etc.).
+- **Retire** — marks intent to retire. Requires Process to confirm.
+- **Response** — unified free-text field between `<!-- r -->` / `<!-- /r -->` HTML comment delimiters. Supports multi-line content. The agent interprets the text to decide what to do (see Agent response interpretation below).
+- **Process** — confirms and executes. Required for all actions except none.
+- **Process All** — bulk confirm for all remaining items, placed after all numbered items.
 
-Only one action per item: Accept, Retire, Response, or Chat. If multiple are filled in, **Chat** takes priority, then **Response**, then **Accept**, then **Retire**.
+Priority when Process is clicked:
+1. If Retire is checked → retire (ignore Response)
+2. If Response has text → agent interprets it (see below)
+3. If Response is empty → execute proposal as-is
 
-### Chat field (future feature)
+### Agent response interpretation
 
-```markdown
-    **Chat:**
-```
-
-When the user's reaction to a note is not a routing decision but a question or conversation starter, they use the **Chat:** field instead of **Response:**.
+When the user writes in the Response field and clicks Process, the agent reads the text and decides:
 
 ```gherkin
-Feature: Chat field for fleeting note conversation
+Feature: Unified Response field with LLM interpretation
 
-  Scenario: User wants to discuss a note before routing
-    Given an unprocessed fleeting note with a **Chat:** entry
-    When the agent processes the daily note
-    Then the agent creates an LLM response to the user's question/prompt
-    And appends the conversation (user question + LLM response) to the fleeting note file
-    And the fleeting note status remains "raw" (NOT updated to completed/retired)
-    And the note continues to appear in Unprocessed on the next day
-    And the user can then route it after seeing the LLM's response
+  Scenario: Response text with Process checked
+    Given a Response field containing any text
+    When the user clicks Process
+    Then the agent ALWAYS sends the text to `claude -p` for interpretation
+    And no deterministic keyword matching is attempted
+    And the LLM returns either a routing decision or a conversational reply
 
-  Scenario: Chat conversation accumulates over multiple days
-    Given a fleeting note with an existing chat conversation
-    And the user adds another **Chat:** entry in the daily note
-    When the agent processes it
-    Then the new exchange is appended to the fleeting note
-    And the note remains unprocessed until explicitly routed
+  Scenario: LLM decides to route
+    Given the LLM determines the Response is a routing instruction
+    Examples: "todo in Chores", "permanent note", "retire", "send to workshop"
+    When it returns a routing decision
+    Then the agent executes the routing
+    And the item moves to Routed
+
+  Scenario: LLM decides to reply (conversation needed)
+    Given the LLM determines the Response is a question or needs clarification
+    Examples: "is this related to the workshop?", "not sure about this"
+    When it returns a conversational reply
+    Then the agent appends the exchange to the fleeting note's ## Chat section
+    Then the agent updates the daily note **Chat:** line with a one-line summary
+    And the agent unchecks Process (note stays unprocessed)
+    And the fleeting note status remains "raw"
+    And the note continues to appear in Unprocessed until explicitly routed
+
+  Scenario: LLM call fails
+    Given the `claude -p` call times out or returns unparseable output
+    When the agent handles the error
+    Then the agent falls back to executing the proposal as-is
+    And the item is routed as permanent note (safe default)
+
+  Scenario: No response, no Retire — execute proposal
+    Given an empty Response field and Retire unchecked
+    When Process is clicked
+    Then the agent executes the proposal as-is (accept)
+    And no LLM call is made
+
+  Scenario: Process All with mixed items
+    Given Process All is checked
+    When the agent processes all items
+    Then each item is handled per its own Response/Retire state
+    And items with Response text get LLM interpretation
+    And items without Response get proposal executed
 ```
 
-This separates two modes of interaction:
-- **Response:** = routing decision (executes immediately, note moves to Routed)
-- **Chat:** = conversation (LLM responds, note stays unprocessed for future routing)
+### LLM response interpretation
 
-### Bulk Response
+When the user writes in the Response field and clicks Process, the text is **always** sent to the LLM (`claude -p`) for interpretation. There is no deterministic keyword matching — the LLM handles all response text, whether it's a clear routing instruction ("todo in chores") or an ambiguous question ("is this related to the workshop?").
 
-After all numbered items, a **Bulk Response:** area allows the user to give routing decisions for multiple items at once (e.g. a voice transcript covering several notes). This is the original response mechanism.
+**Rationale:** Keyword matching was too greedy (e.g. the word "note" in casual text triggered permanent note routing). The LLM provides better judgment for all cases, and the 30s overhead is acceptable since routing is user-initiated.
+
+### LLM prompt context
+
+`claude -p` is called with:
+
+- Fleeting note title and body
+- Current proposal text
+- User's Response text
+- Prior chat history (from fleeting note ## Chat section)
+- Project registry (names, aliases, descriptions)
+- Instruction: return JSON `{ "action": "route"|"reply", "type": "task"|"permanent"|..., "project": "...", "message": "..." }`
+
+### Chat section in fleeting notes
+
+The fleeting note file stores the full conversation history:
 
 ```markdown
-**Bulk Response:**
+---
+status: raw
+created: 2026-03-09
+project: AI Finance
+---
+
+# @onto Kalman filters...
+
+## Chat
+**User (2026-03-09):** is this related to the workshop?
+**Agent (2026-03-09):** Based on the @onto tag and content, this fits AI Finance as a permanent note. Route there?
 ```
 
-- Bulk Response applies to all items that don't already have an individual action (checkbox or per-item Response).
-- If an item has an individual action AND appears in the Bulk Response, the individual action takes priority.
+The daily note shows only a one-line summary:
+```markdown
+    **Chat:** AI Finance confirmed. Route as permanent? [[...|f-note]]
+```
+
+The **Chat:** line only appears after the first agent reply. It's not present initially.
 
 ### Processing flow
 
-The human response is recorded in two places:
-- **Daily note** — the visible narrative record of what was decided (stays in the response area or gets captured in the Routed entry)
-- **Fleeting note frontmatter** — the machine-readable outcome (`status`, `converted_to`, `project`)
-
-When the agent processes responses (individual or bulk), it:
-1. Reads each item's action: checked Accept, checked Retire, per-item Response, or Bulk Response
-2. Creates a **routing session note** at `Fleeting/{year}/{month}/{day}/_routing-session-{NNN}.md`
-   - Contains all human responses verbatim (both individual and bulk)
-   - Table of all routing decisions: item, action source (accept/retire/response/bulk), decision, destination
-   - Links to all affected fleeting notes and their destinations
-3. Executes the routing (creates project/permanent/literature notes, updates fleeting note frontmatter)
-4. Adds `routing_session:` to each fleeting note's frontmatter, linking back to the session note
-5. Moves items from Unprocessed to Routed
-6. Clears per-item **Response:** text and unchecks checkboxes (decisions now live in routing session note)
-7. Adds a `[[...|*]]` link to the routing session note in the daily note
-8. The Routed entry + routing session note serve as the permanent record of the decisions
+When the agent processes decisions:
+1. Reads each item's state: Retire checkbox, Response text, Process checkbox
+2. Applies deterministic routing or calls LLM as needed
+3. For routed items: creates destination files, updates fleeting note frontmatter
+4. Moves items from Unprocessed to Routed
+5. Unchecks Process and clears Response for routed items
+6. For conversation items: appends to fleeting note Chat section, updates daily note Chat line, unchecks Process
 
 ### Sections
 - **Unprocessed** — items awaiting triage. Header includes count and source.
