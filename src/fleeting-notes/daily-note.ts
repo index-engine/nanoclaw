@@ -54,7 +54,9 @@ export function collectUnprocessedNotes(vaultPath: string): FleetingNote[] {
 
         // Extract title from first # heading
         const titleMatch = content.match(/^#\s+(.+)$/m);
-        const title = titleMatch ? titleMatch[1].trim() : entry.name.replace('.md', '');
+        const title = titleMatch
+          ? titleMatch[1].trim()
+          : entry.name.replace('.md', '');
 
         // Extract body (everything after the heading)
         const bodyMatch = content.match(/^#\s+.+\n+([\s\S]*)/m);
@@ -110,10 +112,14 @@ export function generateProposal(
     const projectLine = llmResult.project
       ? `Project ${llmResult.project}.`
       : 'No project match.';
-    const typeLabel = llmResult.type === 'task' ? '#task'
-      : llmResult.type === 'literature' ? 'Literature note'
-      : llmResult.type === 'retire' ? 'Retire'
-      : 'Permanent note';
+    const typeLabel =
+      llmResult.type === 'task'
+        ? '#task'
+        : llmResult.type === 'literature'
+          ? 'Literature note'
+          : llmResult.type === 'retire'
+            ? 'Retire'
+            : 'Permanent note';
     return {
       projectLine,
       text: `${projectLine} ${typeLabel} — ${llmResult.description}`,
@@ -328,7 +334,9 @@ export function findDailyNoteFile(
 
   const datePrefix = `${year}-${monthNum}-${dayNum}`;
   const files = fs.readdirSync(monthDir);
-  const match = files.find((f) => f.startsWith(datePrefix) && f.endsWith('.md'));
+  const match = files.find(
+    (f) => f.startsWith(datePrefix) && f.endsWith('.md'),
+  );
   return match ? path.join(monthDir, match) : null;
 }
 
@@ -344,13 +352,29 @@ export function createDailyNoteIfMissing(
   const year = String(d.getFullYear());
   const monthNum = String(d.getMonth() + 1).padStart(2, '0');
   const months = [
-    'January', 'February', 'March', 'April', 'May', 'June',
-    'July', 'August', 'September', 'October', 'November', 'December',
+    'January',
+    'February',
+    'March',
+    'April',
+    'May',
+    'June',
+    'July',
+    'August',
+    'September',
+    'October',
+    'November',
+    'December',
   ];
   const monthName = months[d.getMonth()];
   const dayNum = String(d.getDate()).padStart(2, '0');
   const days = [
-    'Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday',
+    'Sunday',
+    'Monday',
+    'Tuesday',
+    'Wednesday',
+    'Thursday',
+    'Friday',
+    'Saturday',
   ];
   const dayName = days[d.getDay()];
 
@@ -402,7 +426,10 @@ export function updateDailyNote(vaultPath: string, section: string): boolean {
   }
 
   fs.writeFileSync(dailyNotePath, content);
-  logger.info({ path: dailyNotePath }, 'Daily note updated with fleeting notes section');
+  logger.info(
+    { path: dailyNotePath },
+    'Daily note updated with fleeting notes section',
+  );
   return true;
 }
 
@@ -468,7 +495,8 @@ export function appendNewEntries(
   const absInsertPoint = startIdx + insertPoint;
   content =
     content.slice(0, absInsertPoint) +
-    newBlock + '\n' +
+    newBlock +
+    '\n' +
     content.slice(absInsertPoint);
 
   // Update the "Unprocessed" count in the header

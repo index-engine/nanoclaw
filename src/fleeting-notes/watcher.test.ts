@@ -32,9 +32,7 @@ let tmpDir: string;
 let vaultPath: string;
 let thingsDbPath: string;
 
-function createThingsDb(
-  items: Array<Record<string, unknown>>,
-): string {
+function createThingsDb(items: Array<Record<string, unknown>>): string {
   const dbPath = path.join(tmpDir, 'things.sqlite');
   const db = new Database(dbPath);
   db.exec(`
@@ -68,10 +66,7 @@ function createThingsDb(
   return dbPath;
 }
 
-function addThingsItem(
-  dbPath: string,
-  item: Record<string, unknown>,
-): void {
+function addThingsItem(dbPath: string, item: Record<string, unknown>): void {
   const db = new Database(dbPath);
   db.prepare(
     'INSERT INTO TMTask (uuid, title, notes, creationDate, type, status, trashed, todayIndex, start) VALUES (?, ?, ?, ?, 0, 0, 0, ?, 1)',
@@ -112,13 +107,29 @@ function createDailyNote(vaultDir: string): string {
   const year = String(now.getFullYear());
   const monthNum = String(now.getMonth() + 1).padStart(2, '0');
   const months = [
-    'January', 'February', 'March', 'April', 'May', 'June',
-    'July', 'August', 'September', 'October', 'November', 'December',
+    'January',
+    'February',
+    'March',
+    'April',
+    'May',
+    'June',
+    'July',
+    'August',
+    'September',
+    'October',
+    'November',
+    'December',
   ];
   const monthName = months[now.getMonth()];
   const dayNum = String(now.getDate()).padStart(2, '0');
   const days = [
-    'Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday',
+    'Sunday',
+    'Monday',
+    'Tuesday',
+    'Wednesday',
+    'Thursday',
+    'Friday',
+    'Saturday',
   ];
   const dayName = days[now.getDay()];
 
@@ -133,7 +144,10 @@ function createDailyNote(vaultDir: string): string {
     monthDir,
     `${year}-${monthNum}-${dayNum}-${dayName}.md`,
   );
-  fs.writeFileSync(filePath, `# ${year}-${monthNum}-${dayNum}\n\nDaily note content.\n`);
+  fs.writeFileSync(
+    filePath,
+    `# ${year}-${monthNum}-${dayNum}\n\nDaily note content.\n`,
+  );
   return filePath;
 }
 
@@ -239,13 +253,28 @@ describe('route watcher', () => {
     const y = String(now.getFullYear());
     const m = String(now.getMonth() + 1).padStart(2, '0');
     const months = [
-      'January', 'February', 'March', 'April', 'May', 'June',
-      'July', 'August', 'September', 'October', 'November', 'December',
+      'January',
+      'February',
+      'March',
+      'April',
+      'May',
+      'June',
+      'July',
+      'August',
+      'September',
+      'October',
+      'November',
+      'December',
     ];
     const monthName = months[now.getMonth()];
     const d = String(now.getDate()).padStart(2, '0');
 
-    const fleetingDir = path.join(vaultPath, 'Fleeting', y, `${m}-${monthName}`);
+    const fleetingDir = path.join(
+      vaultPath,
+      'Fleeting',
+      y,
+      `${m}-${monthName}`,
+    );
     fs.mkdirSync(fleetingDir, { recursive: true });
     const fleetingFile = path.join(fleetingDir, `${d}-reply-to-pedro.md`);
     const fleetingRelPath = `Fleeting/${y}/${m}-${monthName}/${d}-reply-to-pedro.md`;
@@ -271,7 +300,9 @@ describe('route watcher', () => {
     const dailyNotePath = createDailyNote(vaultPath);
     const fleetingLink = `[[${fleetingRelPath.replace('.md', '')}|f-note]]`;
     const createdStr = `${y}-${m}-${d}`;
-    const dailyContent = fs.readFileSync(dailyNotePath, 'utf-8') + `
+    const dailyContent =
+      fs.readFileSync(dailyNotePath, 'utf-8') +
+      `
 <!-- fleeting-start -->
 
 ## Fleeting Notes (appended ${createdStr} ~12:00 UTC)
@@ -338,13 +369,28 @@ describe('route watcher', () => {
     const y = String(now.getFullYear());
     const m = String(now.getMonth() + 1).padStart(2, '0');
     const months = [
-      'January', 'February', 'March', 'April', 'May', 'June',
-      'July', 'August', 'September', 'October', 'November', 'December',
+      'January',
+      'February',
+      'March',
+      'April',
+      'May',
+      'June',
+      'July',
+      'August',
+      'September',
+      'October',
+      'November',
+      'December',
     ];
     const monthName = months[now.getMonth()];
     const d = String(now.getDate()).padStart(2, '0');
 
-    const fleetingDir = path.join(vaultPath, 'Fleeting', y, `${m}-${monthName}`);
+    const fleetingDir = path.join(
+      vaultPath,
+      'Fleeting',
+      y,
+      `${m}-${monthName}`,
+    );
     fs.mkdirSync(fleetingDir, { recursive: true });
     const fleetingFile = path.join(fleetingDir, `${d}-some-note.md`);
     fs.writeFileSync(
@@ -353,7 +399,8 @@ describe('route watcher', () => {
     );
 
     const dailyNotePath = createDailyNote(vaultPath);
-    const dailyContent = fs.readFileSync(dailyNotePath, 'utf-8') +
+    const dailyContent =
+      fs.readFileSync(dailyNotePath, 'utf-8') +
       '\n<!-- fleeting-start -->\n### Fleeting Notes\n- [ ] Accept\n- [ ] Retire\n<!-- fleeting-end -->\n';
     fs.writeFileSync(dailyNotePath, dailyContent);
 
@@ -371,56 +418,60 @@ describe('route watcher', () => {
 });
 
 describe('full reactive cycle', () => {
-  it('DB change → ingest → user accepts → route', { timeout: 15000 }, async () => {
-    // Start with empty DB
-    thingsDbPath = createThingsDb([]);
-    const dailyNotePath = createDailyNote(vaultPath);
+  it(
+    'DB change → ingest → user accepts → route',
+    { timeout: 15000 },
+    async () => {
+      // Start with empty DB
+      thingsDbPath = createThingsDb([]);
+      const dailyNotePath = createDailyNote(vaultPath);
 
-    // Start ingest watcher
-    startIngestWatcher(vaultPath, thingsDbPath, 'test-token');
-    await wait(500);
+      // Start ingest watcher
+      startIngestWatcher(vaultPath, thingsDbPath, 'test-token');
+      await wait(500);
 
-    // Simulate adding item to Things
-    addThingsItem(thingsDbPath, {
-      uuid: 'reactive-uuid',
-      title: 'Call dentist',
-      notes: '',
-      creationDate: Math.floor(Date.now() / 1000),
-      todayIndex: 0,
-    });
+      // Simulate adding item to Things
+      addThingsItem(thingsDbPath, {
+        uuid: 'reactive-uuid',
+        title: 'Call dentist',
+        notes: '',
+        creationDate: Math.floor(Date.now() / 1000),
+        todayIndex: 0,
+      });
 
-    // Wait for ingest debounce + processing
-    await wait(3500);
+      // Wait for ingest debounce + processing
+      await wait(3500);
 
-    // Verify ingestion happened
-    const notes = collectUnprocessedNotes(vaultPath);
-    expect(notes).toHaveLength(1);
-    expect(notes[0].title).toBe('Call dentist');
+      // Verify ingestion happened
+      const notes = collectUnprocessedNotes(vaultPath);
+      expect(notes).toHaveLength(1);
+      expect(notes[0].title).toBe('Call dentist');
 
-    // Verify daily note was updated with the new item
-    const dailyContent = fs.readFileSync(dailyNotePath, 'utf-8');
-    expect(dailyContent).toContain('Call dentist');
-    expect(dailyContent).toContain('<!-- fleeting-start -->');
+      // Verify daily note was updated with the new item
+      const dailyContent = fs.readFileSync(dailyNotePath, 'utf-8');
+      expect(dailyContent).toContain('Call dentist');
+      expect(dailyContent).toContain('<!-- fleeting-start -->');
 
-    // Now start route watcher and simulate user accepting
-    _resetPipelineForTests(); // reset so route watcher can start fresh
-    startRouteWatcher(vaultPath);
+      // Now start route watcher and simulate user accepting
+      _resetPipelineForTests(); // reset so route watcher can start fresh
+      startRouteWatcher(vaultPath);
 
-    const edited = dailyContent.replace('- [ ] Process', '- [x] Process');
-    fs.writeFileSync(dailyNotePath, edited);
+      const edited = dailyContent.replace('- [ ] Process', '- [x] Process');
+      fs.writeFileSync(dailyNotePath, edited);
 
-    // Wait for route debounce + processing
-    await wait(2500);
+      // Wait for route debounce + processing
+      await wait(2500);
 
-    // Verify routing happened
-    const remaining = collectUnprocessedNotes(vaultPath);
-    expect(remaining).toHaveLength(0);
+      // Verify routing happened
+      const remaining = collectUnprocessedNotes(vaultPath);
+      expect(remaining).toHaveLength(0);
 
-    // Verify fleeting note is completed
-    const fleetingContent = fs.readFileSync(
-      path.join(vaultPath, notes[0].path),
-      'utf-8',
-    );
-    expect(fleetingContent).toContain('status: completed');
-  });
+      // Verify fleeting note is completed
+      const fleetingContent = fs.readFileSync(
+        path.join(vaultPath, notes[0].path),
+        'utf-8',
+      );
+      expect(fleetingContent).toContain('status: completed');
+    },
+  );
 });

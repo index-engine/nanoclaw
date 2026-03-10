@@ -115,9 +115,7 @@ describe('slugify', () => {
   });
 
   it('handles multiple spaces', () => {
-    expect(slugify('buy   the  printer  toner')).toBe(
-      'buy-the-printer-toner',
-    );
+    expect(slugify('buy   the  printer  toner')).toBe('buy-the-printer-toner');
   });
 
   it('truncates at 60 characters', () => {

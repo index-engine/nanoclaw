@@ -260,8 +260,12 @@ describe('parseDecisions', () => {
     const decisions = parseDecisions(content);
     expect(decisions).toHaveLength(1);
     expect(decisions[0].action).toBe('response');
-    expect(decisions[0].responseText).toContain('Here is the full article text.');
-    expect(decisions[0].responseText).toContain('Even with blank lines in between.');
+    expect(decisions[0].responseText).toContain(
+      'Here is the full article text.',
+    );
+    expect(decisions[0].responseText).toContain(
+      'Even with blank lines in between.',
+    );
   });
 
   it('returns empty when no markers', () => {
@@ -290,7 +294,9 @@ describe('projectNotePath', () => {
   it('generates correct path', () => {
     expect(
       projectNotePath('1. Projects/Chores/', '2026-03-07', 'reply-to-pedro'),
-    ).toBe('1. Projects/Chores/notes/2026/03-March/2026-03-07-reply-to-pedro.md');
+    ).toBe(
+      '1. Projects/Chores/notes/2026/03-March/2026-03-07-reply-to-pedro.md',
+    );
   });
 });
 
@@ -359,9 +365,9 @@ describe('detectRoutingAction', () => {
   });
 
   it('detects literature note', () => {
-    expect(
-      detectRoutingAction('Literature note + permanent note'),
-    ).toBe('literature');
+    expect(detectRoutingAction('Literature note + permanent note')).toBe(
+      'literature',
+    );
   });
 
   it('detects permanent note', () => {
@@ -464,7 +470,9 @@ describe('appendToRoutedSection', () => {
       'Test Note',
     );
 
-    expect(result).toContain('- **Test Note** → retired — [[Fleeting/2026/03/07/test|f-note]]');
+    expect(result).toContain(
+      '- **Test Note** → retired — [[Fleeting/2026/03/07/test|f-note]]',
+    );
   });
 });
 

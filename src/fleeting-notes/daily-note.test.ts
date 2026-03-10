@@ -476,12 +476,30 @@ describe('updateDailyNote', () => {
     const year = String(now.getFullYear());
     const monthNum = String(now.getMonth() + 1).padStart(2, '0');
     const months = [
-      'January', 'February', 'March', 'April', 'May', 'June',
-      'July', 'August', 'September', 'October', 'November', 'December',
+      'January',
+      'February',
+      'March',
+      'April',
+      'May',
+      'June',
+      'July',
+      'August',
+      'September',
+      'October',
+      'November',
+      'December',
     ];
     const monthName = months[now.getMonth()];
     const dayNum = String(now.getDate()).padStart(2, '0');
-    const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+    const days = [
+      'Sunday',
+      'Monday',
+      'Tuesday',
+      'Wednesday',
+      'Thursday',
+      'Friday',
+      'Saturday',
+    ];
     const dayName = days[now.getDay()];
 
     const monthDir = path.join(
@@ -501,7 +519,8 @@ describe('updateDailyNote', () => {
 
   it('appends section to daily note without markers', () => {
     const filePath = setupDailyNote('# Daily Note\n\nSome content here.');
-    const section = '<!-- fleeting-start -->\n## Fleeting Notes\n<!-- fleeting-end -->';
+    const section =
+      '<!-- fleeting-start -->\n## Fleeting Notes\n<!-- fleeting-end -->';
 
     const result = updateDailyNote(vaultPath, section);
     expect(result).toBe(true);
@@ -515,7 +534,8 @@ describe('updateDailyNote', () => {
     const filePath = setupDailyNote(
       '# Daily Note\n\n<!-- fleeting-start -->\nOLD CONTENT\n<!-- fleeting-end -->\n\nAfter section.',
     );
-    const section = '<!-- fleeting-start -->\nNEW CONTENT\n<!-- fleeting-end -->';
+    const section =
+      '<!-- fleeting-start -->\nNEW CONTENT\n<!-- fleeting-end -->';
 
     const result = updateDailyNote(vaultPath, section);
     expect(result).toBe(true);
@@ -534,10 +554,25 @@ describe('updateDailyNote', () => {
     const y = String(now.getFullYear());
     const m = String(now.getMonth() + 1).padStart(2, '0');
     const months = [
-      'January', 'February', 'March', 'April', 'May', 'June',
-      'July', 'August', 'September', 'October', 'November', 'December',
+      'January',
+      'February',
+      'March',
+      'April',
+      'May',
+      'June',
+      'July',
+      'August',
+      'September',
+      'October',
+      'November',
+      'December',
     ];
-    const monthDir = path.join(vaultPath, '0a. Daily Notes', y, `${m}-${months[now.getMonth()]}`);
+    const monthDir = path.join(
+      vaultPath,
+      '0a. Daily Notes',
+      y,
+      `${m}-${months[now.getMonth()]}`,
+    );
     expect(fs.existsSync(monthDir)).toBe(true);
     const files = fs.readdirSync(monthDir);
     expect(files.length).toBe(1);
@@ -552,6 +587,8 @@ describe('updateDailyNote', () => {
 
     updateDailyNote(vaultPath, section);
     const content = fs.readFileSync(filePath, 'utf-8');
-    expect(content).toBe('BEFORE\n<!-- fleeting-start -->\nREPLACED\n<!-- fleeting-end -->\nAFTER');
+    expect(content).toBe(
+      'BEFORE\n<!-- fleeting-start -->\nREPLACED\n<!-- fleeting-end -->\nAFTER',
+    );
   });
 });

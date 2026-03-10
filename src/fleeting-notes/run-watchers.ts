@@ -9,7 +9,8 @@ const thingsDbPath = path.join(
   os.homedir(),
   'Library/Group Containers/JLMPQHK86H.com.culturedcode.ThingsMac/ThingsData-YN4YZ/Things Database.thingsdatabase/main.sqlite',
 );
-const thingsAuthToken = process.env.THINGS_AUTH_TOKEN || 'qNoxawEAAACEW2CfAQAAAA';
+const thingsAuthToken =
+  process.env.THINGS_AUTH_TOKEN || 'qNoxawEAAACEW2CfAQAAAA';
 
 console.log('Starting ingest watcher...');
 const iw = startIngestWatcher(vaultPath, thingsDbPath, thingsAuthToken);

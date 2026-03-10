@@ -110,8 +110,18 @@ export function parseDecisions(dailyNoteContent: string): UserDecision[] {
 }
 
 const MONTH_NAMES = [
-  'January', 'February', 'March', 'April', 'May', 'June',
-  'July', 'August', 'September', 'October', 'November', 'December',
+  'January',
+  'February',
+  'March',
+  'April',
+  'May',
+  'June',
+  'July',
+  'August',
+  'September',
+  'October',
+  'November',
+  'December',
 ];
 
 /**
@@ -206,7 +216,10 @@ export function updateFleetingNoteStatus(
   if (convertedTo) {
     const convertedLine = `converted_to: "[[${convertedTo.replace('.md', '')}]]"`;
     // Insert before the closing ---
-    content = content.replace(/^(---\n[\s\S]*?)(^---)/m, `$1${convertedLine}\n$2`);
+    content = content.replace(
+      /^(---\n[\s\S]*?)(^---)/m,
+      `$1${convertedLine}\n$2`,
+    );
   }
 
   fs.writeFileSync(absPath, content);
@@ -226,7 +239,9 @@ export function appendToRoutedSection(
   routingType?: string,
 ): string {
   const fleetingLink = `[[${fleetingPath.replace('.md', '')}|f-note]]`;
-  const titleBold = title ? `**${title}**` : `**${fleetingPath.replace('.md', '').split('/').pop()}**`;
+  const titleBold = title
+    ? `**${title}**`
+    : `**${fleetingPath.replace('.md', '').split('/').pop()}**`;
 
   let entry: string;
   if (action === 'retire') {
@@ -234,8 +249,18 @@ export function appendToRoutedSection(
   } else {
     // Map routing type to spec labels
     const rType = routingType || 'permanent';
-    const destLabel = rType === 'task' ? 'pr-note' : rType === 'literature' ? 'l-note' : 'pe-note';
-    const typeDesc = rType === 'task' ? '#task' : rType === 'literature' ? 'literature note' : 'permanent';
+    const destLabel =
+      rType === 'task'
+        ? 'pr-note'
+        : rType === 'literature'
+          ? 'l-note'
+          : 'pe-note';
+    const typeDesc =
+      rType === 'task'
+        ? '#task'
+        : rType === 'literature'
+          ? 'literature note'
+          : 'permanent';
     const description = projectName
       ? `${projectName} as ${typeDesc}`
       : typeDesc;
@@ -278,13 +303,19 @@ export function detectRoutingAction(
 export function parseResponseOverride(
   responseText: string,
   registry: ProjectRegistryEntry[],
-): { routingAction?: 'task' | 'permanent' | 'literature' | 'retire'; project?: ProjectRegistryEntry } | undefined {
+):
+  | {
+      routingAction?: 'task' | 'permanent' | 'literature' | 'retire';
+      project?: ProjectRegistryEntry;
+    }
+  | undefined {
   const lower = responseText.toLowerCase();
 
   // Detect routing action from response — only match clear routing keywords
   let routingAction: 'task' | 'permanent' | 'literature' | 'retire' | undefined;
   if (lower.includes('retire')) routingAction = 'retire';
-  else if (lower.includes('todo') || lower.includes('task')) routingAction = 'task';
+  else if (lower.includes('todo') || lower.includes('task'))
+    routingAction = 'task';
   else if (lower.includes('literature')) routingAction = 'literature';
   else if (lower.includes('permanent note')) routingAction = 'permanent';
 
@@ -311,14 +342,24 @@ export async function executeRoute(
   decision: UserDecision,
   note: FleetingNote,
   registry: ProjectRegistryEntry[],
-): Promise<{ destinationPath?: string; routingType?: string; error?: string; conversation?: boolean }> {
+): Promise<{
+  destinationPath?: string;
+  routingType?: string;
+  error?: string;
+  conversation?: boolean;
+}> {
   if (decision.action === 'retire') {
     updateFleetingNoteStatus(vaultPath, decision.fleetingPath, 'retired');
     return { routingType: 'retire' };
   }
 
   // For response actions, always use LLM to interpret the user's text
-  let responseOverride: { routingAction?: 'task' | 'permanent' | 'literature' | 'retire'; project?: ProjectRegistryEntry } | undefined;
+  let responseOverride:
+    | {
+        routingAction?: 'task' | 'permanent' | 'literature' | 'retire';
+        project?: ProjectRegistryEntry;
+      }
+    | undefined;
   if (decision.action === 'response' && decision.responseText) {
     const llmResult = await interpretResponse(
       note,
@@ -342,29 +383,40 @@ export async function executeRoute(
     // LLM decided to route
     if (llmResult.action === 'route') {
       const llmProject = llmResult.project
-        ? registry.find((p) => p.name.toLowerCase() === llmResult.project!.toLowerCase())
+        ? registry.find(
+            (p) => p.name.toLowerCase() === llmResult.project!.toLowerCase(),
+          )
         : undefined;
       responseOverride = {
-        routingAction: llmResult.type as 'task' | 'permanent' | 'literature' | 'retire',
+        routingAction: llmResult.type as
+          | 'task'
+          | 'permanent'
+          | 'literature'
+          | 'retire',
         project: llmProject,
       };
     }
   }
 
   // Accept or Response: create destination file
-  const routingAction = responseOverride?.routingAction
-    ?? (decision.proposal ? detectRoutingAction(decision.proposal.text) : 'permanent');
+  const routingAction =
+    responseOverride?.routingAction ??
+    (decision.proposal
+      ? detectRoutingAction(decision.proposal.text)
+      : 'permanent');
 
-  const projectEntry = responseOverride?.project
-    ?? (note.project
+  const projectEntry =
+    responseOverride?.project ??
+    (note.project
       ? registry.find(
           (p) => p.name.toLowerCase() === note.project!.toLowerCase(),
         )
       : undefined);
   // Only use project if it has a real vault path (not placeholder text)
-  const project = projectEntry?.vault && !projectEntry.vault.includes('*')
-    ? projectEntry
-    : undefined;
+  const project =
+    projectEntry?.vault && !projectEntry.vault.includes('*')
+      ? projectEntry
+      : undefined;
 
   let destPath: string | undefined;
   const rType = routingAction;
@@ -461,19 +513,13 @@ export async function processDecisions(
   for (const decision of decisions) {
     const note = notes.find((n) => n.path === decision.fleetingPath);
     if (!note) {
-      result.errors.push(
-        `Fleeting note not found: ${decision.fleetingPath}`,
-      );
+      result.errors.push(`Fleeting note not found: ${decision.fleetingPath}`);
       continue;
     }
 
     try {
-      const { destinationPath, routingType, error, conversation } = await executeRoute(
-        vaultPath,
-        decision,
-        note,
-        registry,
-      );
+      const { destinationPath, routingType, error, conversation } =
+        await executeRoute(vaultPath, decision, note, registry);
       if (error) {
         result.errors.push(error);
       } else if (conversation) {
@@ -496,9 +542,7 @@ export async function processDecisions(
         });
       }
     } catch (err) {
-      result.errors.push(
-        `Error routing ${decision.fleetingPath}: ${err}`,
-      );
+      result.errors.push(`Error routing ${decision.fleetingPath}: ${err}`);
     }
   }
 

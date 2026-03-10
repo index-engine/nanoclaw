@@ -28,9 +28,7 @@ let tmpDir: string;
 let vaultPath: string;
 let thingsDbPath: string;
 
-function createThingsDb(
-  items: Array<Record<string, unknown>>,
-): string {
+function createThingsDb(items: Array<Record<string, unknown>>): string {
   const dbPath = path.join(tmpDir, 'things.sqlite');
   const db = new Database(dbPath);
   db.exec(`
@@ -109,13 +107,29 @@ function createDailyNote(vaultDir: string): string {
   const year = String(now.getFullYear());
   const monthNum = String(now.getMonth() + 1).padStart(2, '0');
   const months = [
-    'January', 'February', 'March', 'April', 'May', 'June',
-    'July', 'August', 'September', 'October', 'November', 'December',
+    'January',
+    'February',
+    'March',
+    'April',
+    'May',
+    'June',
+    'July',
+    'August',
+    'September',
+    'October',
+    'November',
+    'December',
   ];
   const monthName = months[now.getMonth()];
   const dayNum = String(now.getDate()).padStart(2, '0');
   const days = [
-    'Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday',
+    'Sunday',
+    'Monday',
+    'Tuesday',
+    'Wednesday',
+    'Thursday',
+    'Friday',
+    'Saturday',
   ];
   const dayName = days[now.getDay()];
 
@@ -130,7 +144,10 @@ function createDailyNote(vaultDir: string): string {
     monthDir,
     `${year}-${monthNum}-${dayNum}-${dayName}.md`,
   );
-  fs.writeFileSync(filePath, `# ${year}-${monthNum}-${dayNum}\n\nDaily note content.\n`);
+  fs.writeFileSync(
+    filePath,
+    `# ${year}-${monthNum}-${dayNum}\n\nDaily note content.\n`,
+  );
   return filePath;
 }
 
@@ -178,17 +195,19 @@ describe('end-to-end pipeline', () => {
     const dailyNotePath = createDailyNote(vaultPath);
 
     // Run pipeline
-    const result = await runPipeline(
-      vaultPath,
-      thingsDbPath,
-      'test-token',
-    );
+    const result = await runPipeline(vaultPath, thingsDbPath, 'test-token');
 
     // Verify ingestion
     expect(result.ingest.created).toHaveLength(3);
-    expect(result.ingest.created.map((n) => n.title)).toContain('Reply to Pedro');
-    expect(result.ingest.created.map((n) => n.title)).toContain('Resubmit insurance claim');
-    expect(result.ingest.created.map((n) => n.title)).toContain('@nanoclaw fix the sync');
+    expect(result.ingest.created.map((n) => n.title)).toContain(
+      'Reply to Pedro',
+    );
+    expect(result.ingest.created.map((n) => n.title)).toContain(
+      'Resubmit insurance claim',
+    );
+    expect(result.ingest.created.map((n) => n.title)).toContain(
+      '@nanoclaw fix the sync',
+    );
 
     // Verify project detection
     const pedro = result.ingest.created.find(
@@ -368,7 +387,11 @@ describe('end-to-end pipeline', () => {
     fs.writeFileSync(dailyNotePath, dailyContent);
 
     const notes = collectUnprocessedNotes(vaultPath);
-    const routingResult = await processDecisions(vaultPath, dailyContent, notes);
+    const routingResult = await processDecisions(
+      vaultPath,
+      dailyContent,
+      notes,
+    );
 
     expect(routingResult.routed).toHaveLength(1);
     expect(routingResult.routed[0].action).toBe('retire');
@@ -401,7 +424,8 @@ describe('end-to-end pipeline', () => {
       {
         uuid: 'u3',
         title: '@nanoclaw observation about caching',
-        notes: 'The cache invalidation strategy seems suboptimal for large vaults.',
+        notes:
+          'The cache invalidation strategy seems suboptimal for large vaults.',
         creationDate: Math.floor(Date.now() / 1000),
         todayIndex: 2,
       },
@@ -459,12 +483,9 @@ describe('end-to-end pipeline', () => {
       "```tasks\nfilter by function task.tags.includes('#task')\n```",
     );
 
-    const result = await runPipeline(
-      vaultPath,
-      thingsDbPath,
-      'token',
-      { runIntegrity: true },
-    );
+    const result = await runPipeline(vaultPath, thingsDbPath, 'token', {
+      runIntegrity: true,
+    });
 
     expect(result.integrity.passed).toBe(false);
     expect(

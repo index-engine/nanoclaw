@@ -173,11 +173,7 @@ describe('registry', () => {
     });
 
     it('detects from non-@tag routing keyword', () => {
-      const result = detectProject(
-        registry,
-        'Resubmit insurance claim',
-        '',
-      );
+      const result = detectProject(registry, 'Resubmit insurance claim', '');
       expect(result?.name).toBe('Chores');
     });
 

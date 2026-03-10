@@ -24,15 +24,12 @@ export interface LLMRouteResult {
  * Call `claude -p` to parse the outer JSON envelope and extract the inner text.
  */
 function callClaude(prompt: string): string {
-  const result = execSync(
-    `claude -p --output-format json`,
-    {
-      input: prompt,
-      encoding: 'utf-8',
-      timeout: 30_000,
-      maxBuffer: 1024 * 1024,
-    },
-  );
+  const result = execSync(`claude -p --output-format json`, {
+    input: prompt,
+    encoding: 'utf-8',
+    timeout: 30_000,
+    maxBuffer: 1024 * 1024,
+  });
 
   const outer = JSON.parse(result.trim());
   return outer.result || outer.text || result.trim();
@@ -52,7 +49,10 @@ export function generateLLMProposal(
   registry: ProjectRegistryEntry[],
 ): LLMProposalResult | null {
   const registryList = registry
-    .map((p) => `- ${p.name} (aliases: ${p.aliases.join(', ')}) — routing: ${p.routing.join(', ')}`)
+    .map(
+      (p) =>
+        `- ${p.name} (aliases: ${p.aliases.join(', ')}) — routing: ${p.routing.join(', ')}`,
+    )
     .join('\n');
 
   const prompt = `You are a routing assistant for a personal knowledge management system. Given a fleeting note, propose which project it belongs to and what type of note it should become.
@@ -86,7 +86,8 @@ Rules:
 
   try {
     const text = callClaude(prompt);
-    const jsonMatch = typeof text === 'string' ? text.match(/\{[\s\S]*?\}/) : null;
+    const jsonMatch =
+      typeof text === 'string' ? text.match(/\{[\s\S]*?\}/) : null;
     if (jsonMatch) {
       const parsed = JSON.parse(jsonMatch[0]) as LLMProposalResult;
       logger.info(
@@ -115,7 +116,10 @@ function buildResponsePrompt(
   chatHistory?: string,
 ): string {
   const registryList = registry
-    .map((p) => `- ${p.name} (aliases: ${p.aliases.join(', ')}) — ${p.routing.join(', ')}`)
+    .map(
+      (p) =>
+        `- ${p.name} (aliases: ${p.aliases.join(', ')}) — ${p.routing.join(', ')}`,
+    )
     .join('\n');
 
   return `You are a routing assistant for a personal knowledge management system. A user has a fleeting note and has written a response. Your job is to interpret their response and decide what to do.
@@ -155,7 +159,10 @@ Rules:
 /**
  * Read the ## Chat section from a fleeting note file (if it exists).
  */
-function readChatHistory(vaultPath: string, fleetingPath: string): string | undefined {
+function readChatHistory(
+  vaultPath: string,
+  fleetingPath: string,
+): string | undefined {
   const absPath = path.join(vaultPath, fleetingPath);
   if (!fs.existsSync(absPath)) return undefined;
 
@@ -176,14 +183,19 @@ export async function interpretResponse(
   vaultPath: string,
 ): Promise<LLMRouteResult> {
   const chatHistory = readChatHistory(vaultPath, note.path);
-  const prompt = buildResponsePrompt(note, responseText, proposalText, registry, chatHistory);
+  const prompt = buildResponsePrompt(
+    note,
+    responseText,
+    proposalText,
+    registry,
+    chatHistory,
+  );
 
   try {
     const text = callClaude(prompt);
 
-    const jsonMatch = typeof text === 'string'
-      ? text.match(/\{[\s\S]*?\}/)
-      : null;
+    const jsonMatch =
+      typeof text === 'string' ? text.match(/\{[\s\S]*?\}/) : null;
     if (jsonMatch) {
       const parsed = JSON.parse(jsonMatch[0]) as LLMRouteResult;
       if (parsed.action === 'route' || parsed.action === 'reply') {
@@ -196,10 +208,16 @@ export async function interpretResponse(
     }
 
     // If we got text but couldn't parse structured JSON, treat as reply
-    logger.warn({ result: text }, 'LLM returned unparseable response, treating as reply');
+    logger.warn(
+      { result: text },
+      'LLM returned unparseable response, treating as reply',
+    );
     return {
       action: 'reply',
-      message: typeof text === 'string' ? text.slice(0, 200) : 'Could not interpret response.',
+      message:
+        typeof text === 'string'
+          ? text.slice(0, 200)
+          : 'Could not interpret response.',
     };
   } catch (err) {
     logger.error({ err }, 'claude -p call failed, falling back to proposal');

@@ -164,7 +164,10 @@ export function startIngestWatcher(
   }
 
   if (!fs.existsSync(thingsDbPath)) {
-    logger.warn({ thingsDbPath }, 'Things DB not found, ingest watcher not started');
+    logger.warn(
+      { thingsDbPath },
+      'Things DB not found, ingest watcher not started',
+    );
     return null;
   }
 
@@ -172,7 +175,10 @@ export function startIngestWatcher(
   // fs.watch on Group Containers directories used by Things 3)
   const watchDir = path.dirname(thingsDbPath);
   const dbBasename = path.basename(thingsDbPath);
-  logger.info({ thingsDbPath, watchDir }, 'Starting ingest watcher on Things DB');
+  logger.info(
+    { thingsDbPath, watchDir },
+    'Starting ingest watcher on Things DB',
+  );
 
   // Run once on startup to catch anything missed
   runIngest(vaultPath, thingsDbPath, thingsAuthToken);
@@ -239,21 +245,35 @@ async function runRoute(vaultPath: string): Promise<void> {
             // Find and uncheck the item's Process checkbox
             const processIdx = content.indexOf('- [x] Process', pathIdx);
             if (processIdx !== -1) {
-              const after = content.slice(processIdx + '- [x] Process'.length, processIdx + '- [x] Process'.length + 5);
+              const after = content.slice(
+                processIdx + '- [x] Process'.length,
+                processIdx + '- [x] Process'.length + 5,
+              );
               if (!after.trimStart().startsWith('All')) {
-                content = content.slice(0, processIdx) + '- [ ] Process' + content.slice(processIdx + '- [x] Process'.length);
+                content =
+                  content.slice(0, processIdx) +
+                  '- [ ] Process' +
+                  content.slice(processIdx + '- [x] Process'.length);
               }
             }
             // Add/update **Chat:** line with summary from fleeting note
             const fleetingAbsPath = path.join(vaultPath, routed.fleetingPath);
             if (fs.existsSync(fleetingAbsPath)) {
               const fleetingContent = fs.readFileSync(fleetingAbsPath, 'utf-8');
-              const lastAgent = fleetingContent.match(/\*\*Agent \([^)]+\):\*\* (.+)/g);
+              const lastAgent = fleetingContent.match(
+                /\*\*Agent \([^)]+\):\*\* (.+)/g,
+              );
               if (lastAgent) {
-                const lastReply = lastAgent[lastAgent.length - 1].match(/\*\*Agent \([^)]+\):\*\* (.+)/)?.[1] || '';
+                const lastReply =
+                  lastAgent[lastAgent.length - 1].match(
+                    /\*\*Agent \([^)]+\):\*\* (.+)/,
+                  )?.[1] || '';
                 const chatSummary = lastReply.slice(0, 80);
                 // Insert Chat line after Proposed line for this item
-                const proposedIdx = content.lastIndexOf('**Proposed:**', pathIdx + pathRef.length + 50);
+                const proposedIdx = content.lastIndexOf(
+                  '**Proposed:**',
+                  pathIdx + pathRef.length + 50,
+                );
                 // Find a better anchor: look for the item's block
                 const itemBlockStart = content.lastIndexOf('\n', pathIdx);
                 const processEnd = content.indexOf('- [ ] Process', pathIdx);
@@ -261,14 +281,26 @@ async function runRoute(vaultPath: string): Promise<void> {
                   const blockSlice = content.slice(itemBlockStart, processEnd);
                   if (blockSlice.includes('**Chat:**')) {
                     // Update existing Chat line
-                    const chatLineStart = content.indexOf('**Chat:**', itemBlockStart);
+                    const chatLineStart = content.indexOf(
+                      '**Chat:**',
+                      itemBlockStart,
+                    );
                     const chatLineEnd = content.indexOf('\n', chatLineStart);
-                    content = content.slice(0, chatLineStart) + `**Chat:** ${chatSummary}` + content.slice(chatLineEnd);
+                    content =
+                      content.slice(0, chatLineStart) +
+                      `**Chat:** ${chatSummary}` +
+                      content.slice(chatLineEnd);
                   } else {
                     // Insert Chat line before Response
-                    const responseIdx = content.indexOf('**Response:**', itemBlockStart);
+                    const responseIdx = content.indexOf(
+                      '**Response:**',
+                      itemBlockStart,
+                    );
                     if (responseIdx !== -1 && responseIdx < processEnd) {
-                      content = content.slice(0, responseIdx) + `**Chat:** ${chatSummary}\n    ` + content.slice(responseIdx);
+                      content =
+                        content.slice(0, responseIdx) +
+                        `**Chat:** ${chatSummary}\n    ` +
+                        content.slice(responseIdx);
                     }
                   }
                 }
@@ -300,7 +332,10 @@ async function runRoute(vaultPath: string): Promise<void> {
             const idx = content.indexOf(marker, pos);
             if (idx === -1) break;
             // Skip "Process All"
-            const after = content.slice(idx + marker.length, idx + marker.length + 5);
+            const after = content.slice(
+              idx + marker.length,
+              idx + marker.length + 5,
+            );
             if (after.trimStart().startsWith('All')) {
               pos = idx + marker.length;
               continue;
@@ -368,10 +403,7 @@ export function startRouteWatcher(vaultPath: string): fs.FSWatcher | null {
   }
 
   // Watch the directory (more reliable than watching a single file on macOS)
-  const watchDir = dailyNotePath.substring(
-    0,
-    dailyNotePath.lastIndexOf('/'),
-  );
+  const watchDir = dailyNotePath.substring(0, dailyNotePath.lastIndexOf('/'));
   const watchFilename = dailyNotePath.substring(
     dailyNotePath.lastIndexOf('/') + 1,
   );
